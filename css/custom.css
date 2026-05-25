@@ -1336,6 +1336,17 @@ body[data-state="backdrop"]:has(.nds-modal:not([hidden])) .site-header {
   color: #175cd3;
 }
 
+#login-modal .nds-feedback {
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+#login-modal .nds-feedback-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  unicode-bidi: plaintext;
+}
+
 .nds-feedback-icon {
   width: var(--site-icon-size);
   height: var(--site-icon-size);

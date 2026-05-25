@@ -2,8 +2,8 @@
   "use strict";
 
   var HERO_SLIDE_DURATION = 8500;
-  var NOTIFICATIONS_KEY = "websiteDemo:notifications";
-  var ACCOUNT_SETTINGS_KEY = "websiteDemo:accountSettings";
+  var SITE_DATA_KEY = "biographyc:siteData:v20260525";
+  var NOTIFICATIONS_KEY = "biographyc:notifications:v20260525";
 
   var appState = {
     data: null,
@@ -43,9 +43,20 @@
   }
 
   function visibleHeroSlides(home) {
-    return visibleItems(home.heroSlides || []).filter(function (slide) {
+    var slides = visibleItems(home.heroSlides || []).filter(function (slide) {
       return hasText(slide.image) || hasText(slide.mobileImage) || hasText(slide.video) || hasText(slide.mobileVideo);
     });
+    if (!slides.length && (hasText(home.heroImage) || hasText(home.heroVideo))) {
+      slides.push({
+        title: home.heroTitle || "",
+        subtitle: home.heroSubtitle || "",
+        intro: home.heroIntro || "",
+        image: home.heroImage || "",
+        video: home.heroVideo || "",
+        alt: home.heroTitle || home.ownerName || ""
+      });
+    }
+    return slides;
   }
 
   function hasHomeHeroContent(home) {
@@ -53,7 +64,10 @@
   }
 
   function hasHomeBodyContent(home) {
-    return [home.ownerName, home.title, home.intro, home.avatar, home.biography].some(hasText) || home.experience.length || home.achievements.length || home.skills.length;
+    return [home.ownerName, home.title, home.intro, home.avatar, home.biography].some(hasText)
+      || visibleItems(home.experience || []).length
+      || visibleItems(home.achievements || []).length
+      || visibleItems(home.skills || []).length;
   }
 
   function hasHomeContent(home) {
@@ -69,14 +83,76 @@
   }
 
   function siteTitle(data) {
-    return data.settings.siteName || data.home.ownerName || "السيرة الذاتية";
+    data = data || {};
+    data.settings = data.settings || {};
+    data.home = data.home || {};
+    return data.settings.siteName || data.home.ownerName || document.title || "Biography";
+  }
+
+  function readCachedSiteData() {
+    try {
+      var raw = localStorage.getItem(SITE_DATA_KEY);
+      var data = raw ? JSON.parse(raw) : null;
+      return data && typeof data === "object" ? data : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function fallbackNavigationLabel(key, fallback) {
+    var defaults = window.DEFAULT_SITE_DATA && window.DEFAULT_SITE_DATA.navigation;
+    return (defaults && defaults[key]) || fallback;
+  }
+
+  function navigationLabel(data, key, fallback) {
+    data = data || {};
+    data.navigation = data.navigation || {};
+    return data.navigation[key] || fallbackNavigationLabel(key, fallback);
+  }
+
+  function brandTitle(data) {
+    data = data || {};
+    data.settings = data.settings || {};
+    return data.settings.brandName || siteTitle(data);
+  }
+
+  function updateDocumentTitle(data, detailTitle) {
+    var baseTitle = brandTitle(data);
+    var page = document.body ? document.body.dataset.page : "home";
+    var title = detailTitle || baseTitle;
+    if (!detailTitle) {
+      if (page === "projects") title = navigationLabel(data, "projectsLabel", "مشاريعنا") + " | " + baseTitle;
+      if (page === "pages") title = navigationLabel(data, "pagesLabel", "الصفحات") + " | " + baseTitle;
+      if (page === "admin") title = navigationLabel(data, "adminLabel", "الإدارة") + " | " + baseTitle;
+      if (page === "notifications") title = "الإشعارات | " + baseTitle;
+    } else if (detailTitle !== baseTitle) {
+      title = detailTitle + " | " + baseTitle;
+    }
+    document.title = title;
+  }
+
+  function applyShellText(data) {
+    data = data || {};
+    data.settings = data.settings || {};
+    data.home = data.home || {};
+    data.navigation = data.navigation || {};
+    var title = brandTitle(data);
+    setText("[data-site-title]", title);
+    setText(".nds-brand-slogan", data.settings.brandSlogan || "");
+    setText("[data-current-year]", String(new Date().getFullYear()));
+    setText("[data-home-page-label]", navigationLabel(data, "homeLabel", "الرئيسية"));
+    setText("[data-projects-page-label]", navigationLabel(data, "projectsLabel", "مشاريعنا"));
+    setText("[data-pages-page-label]", navigationLabel(data, "pagesLabel", "الصفحات"));
+    qsa(".brand-logo, .nds-footer-logos img").forEach(function (image) {
+      image.src = data.settings.brandLogo || "assets/vendor/nds/images/palm_swords.svg";
+    });
+    updateDocumentTitle(data);
   }
 
   function renderShared(data) {
     applyDocumentSettings(data);
-    setText("[data-site-title]", siteTitle(data));
+    applyShellText(data);
     renderAccountMenu(data);
-    setText("[data-current-year]", String(new Date().getFullYear()));
     renderNavigation(data);
     renderNotifications();
     renderFooter(data);
@@ -87,7 +163,7 @@
     var config = window.ADMIN_AUTH_CONFIG || {};
     var name = data.home.ownerName || siteTitle(data);
     var role = data.home.title || "Administrator";
-    var email = config.email || "admin@gmail.com";
+    var email = config.email || "";
     var isAuthenticated = isAdminAuthenticated();
     setText("[data-admin-persona-name]", name);
     setText("[data-admin-persona-role]", role);
@@ -108,26 +184,11 @@
     });
   }
 
-  function loadAccountSettings() {
-    try {
-      return JSON.parse(localStorage.getItem(ACCOUNT_SETTINGS_KEY) || "{}") || {};
-    } catch (error) {
-      return {};
-    }
-  }
-
-  function saveAccountSettings(settings) {
-    localStorage.setItem(ACCOUNT_SETTINGS_KEY, JSON.stringify(settings || {}));
-  }
-
   function currentAuthConfig() {
-    var base = window.ADMIN_AUTH_CONFIG || {};
-    var saved = loadAccountSettings();
+    var user = window.SiteStore && window.SiteStore.currentUser ? window.SiteStore.currentUser() : null;
     return {
-      email: saved.email || base.email || "admin@gmail.com",
-      passcode: saved.passcode || base.passcode || "1234",
-      sessionKey: base.sessionKey || "websiteDemo:adminSession",
-      phone: saved.phone || ""
+      email: user && user.email ? user.email : "",
+      phone: user && user.phone ? user.phone : ""
     };
   }
 
@@ -258,19 +319,30 @@
     }
     var portalLabel = "الإدارة";
     var isAuthenticated = isAdminAuthenticated();
+    var accountName = accountDisplayName(data);
+    var accountRole = data && data.home ? data.home.title || "Administrator" : "Administrator";
+    var accountConfig = currentAuthConfig();
     if (!isAuthenticated) portalLabel = "تسجيل الدخول";
     adminItem.className = isAuthenticated ? "nds-nav-item nds-dropdown mobile-admin-shortcut mobile-account-dropdown" : "nds-nav-item mobile-admin-shortcut";
     if (toggler) minimal.insertBefore(adminItem, toggler);
     adminItem.innerHTML = isAuthenticated ? [
       '<button class="nds-nav-link nds-btn nds-subtle nds-indicator account-persona-trigger mobile-account-trigger" type="button" aria-haspopup="true" aria-expanded="false" aria-label="' + escapeHtml(portalLabel) + '" title="' + escapeHtml(portalLabel) + '">',
-      personaAvatarMarkup(data, accountDisplayName(data), true),
+      personaAvatarMarkup(data, accountName, true),
       '<span class="nds-label">' + escapeHtml(portalLabel) + '</span>',
       '</button>',
       '<div class="nds-dropdown-menu nds-fit">',
       '<div class="nds-dropdown-content">',
       '<div class="nds-column">',
+      '<div class="nds-persona nds-sm mobile-account-persona">',
+      '<div class="nds-persona-info">',
+      '<span class="nds-persona-name">' + escapeHtml(accountName) + '</span>',
+      '<span class="nds-persona-role nds-truncate">' + escapeHtml(accountRole) + '</span>',
+      '<span class="nds-persona-desc">' + escapeHtml(accountConfig.email) + '</span>',
+      '</div>',
+      '<hr class="nds-divider">',
       '<div class="nds-persona-action mobile-account-actions mobile-header-account-actions">',
       accountActionsMarkup(portalLabel),
+      '</div>',
       '</div>',
       '</div>',
       '</div>',
@@ -542,8 +614,7 @@
   }
 
   function isAdminAuthenticated() {
-    var config = currentAuthConfig();
-    return sessionStorage.getItem(config.sessionKey || "websiteDemo:adminSession") === "true";
+    return Boolean(window.SiteStore && window.SiteStore.currentUser && window.SiteStore.currentUser());
   }
 
   function ensureLoginModal() {
@@ -584,7 +655,7 @@
       '<span class="nds-feedback-icon">',
       '<i class="nds-icon" aria-hidden="true"></i>',
       '</span>',
-      '<span class="nds-feedback-message">استخدم admin@gmail.com</span>',
+      '<span class="nds-feedback-message">أدخل بريد المدير</span>',
       '</span>',
       '</div>',
       '</div>',
@@ -612,7 +683,32 @@
       '<span class="nds-feedback-icon">',
       '<i class="nds-icon" aria-hidden="true"></i>',
       '</span>',
-      '<span class="nds-feedback-message">استخدم 1234</span>',
+      '<span class="nds-feedback-message">أدخل كلمة المرور</span>',
+      '</span>',
+      '</div>',
+      '</div>',
+      '<div class="nds-form-container login-captcha-field" id="login-captcha-field" data-required>',
+      '<div class="nds-form-header">',
+      '<label for="login-captcha-answer">',
+      '<span class="nds-label">&#1575;&#1604;&#1578;&#1581;&#1602;&#1602; &#1575;&#1604;&#1571;&#1605;&#1606;&#1610;</span>',
+      '</label>',
+      '</div>',
+      '<div class="login-captcha-row">',
+      '<div class="login-captcha-question" data-login-captcha-question aria-live="polite">&#1580;&#1575;&#1585;&#1610; &#1578;&#1581;&#1605;&#1610;&#1604; &#1575;&#1604;&#1578;&#1581;&#1602;&#1602;...</div>',
+      '<button class="nds-btn nds-subtle login-captcha-refresh" type="button" data-login-captcha-refresh aria-label="&#1578;&#1581;&#1583;&#1610;&#1579; &#1575;&#1604;&#1578;&#1581;&#1602;&#1602;" title="&#1578;&#1581;&#1583;&#1610;&#1579; &#1575;&#1604;&#1578;&#1581;&#1602;&#1602;">',
+      '<i class="nds-icon nds-hgi-refresh" aria-hidden="true"></i>',
+      '</button>',
+      '</div>',
+      '<div class="nds-form-control">',
+      '<i class="nds-icon nds-hgi-help-circle" aria-hidden="true"></i>',
+      '<input type="text" id="login-captcha-answer" class="nds-input" inputmode="numeric" pattern="[0-9]*" placeholder="&#1575;&#1603;&#1578;&#1576; &#1575;&#1604;&#1606;&#1575;&#1578;&#1580;" autocomplete="off" required aria-required="true" dir="ltr">',
+      '</div>',
+      '<div class="nds-form-footer" data-feedback-target>',
+      '<span class="nds-feedback nds-outline nds-sm" data-status="neutral" data-permanent>',
+      '<span class="nds-feedback-icon">',
+      '<i class="nds-icon" aria-hidden="true"></i>',
+      '</span>',
+      '<span class="nds-feedback-message">&#1571;&#1583;&#1582;&#1604; &#1606;&#1575;&#1578;&#1580; &#1575;&#1604;&#1593;&#1605;&#1604;&#1610;&#1577;</span>',
       '</span>',
       '</div>',
       '</div>',
@@ -666,6 +762,7 @@
       modal.setAttribute("aria-hidden", "false");
       modal.dataset.state = "open";
     }
+    loadLoginCaptcha();
     var emailInput = qs("#login-email", modal);
     if (emailInput) emailInput.focus();
   }
@@ -689,6 +786,52 @@
       modal.setAttribute("aria-hidden", "true");
       modal.dataset.state = "closed";
     }
+  }
+
+  function resetLoginCaptchaField(modal) {
+    var field = qs("#login-captcha-field", modal);
+    if (!field) return;
+    if (window.NDS && window.NDS.Forms && window.NDS.Forms.clearStatus) {
+      window.NDS.Forms.clearStatus(field);
+    } else {
+      field.removeAttribute("data-status");
+      field.removeAttribute("data-message");
+      qsa(".nds-feedback:not([data-permanent])", field).forEach(function (feedback) { feedback.remove(); });
+      qsa(".nds-feedback[data-permanent]", field).forEach(function (feedback) { feedback.hidden = false; });
+    }
+    var input = qs("input", field);
+    if (input) input.removeAttribute("aria-invalid");
+  }
+
+  function loadLoginCaptcha() {
+    var modal = qs("#login-modal");
+    if (!modal || !window.SiteStore || !window.SiteStore.captcha) return Promise.resolve(null);
+    var question = qs("[data-login-captcha-question]", modal);
+    var input = qs("#login-captcha-answer", modal);
+    var refresh = qs("[data-login-captcha-refresh]", modal);
+    if (question) {
+      question.textContent = "\u062c\u0627\u0631\u064a \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u062a\u062d\u0642\u0642...";
+      question.dataset.state = "loading";
+    }
+    if (refresh) refresh.dataset.state = "loading";
+    return window.SiteStore.captcha().then(function (captcha) {
+      if (question) {
+        question.textContent = captcha && captcha.question ? captcha.question : "";
+        question.removeAttribute("data-state");
+      }
+      if (input) input.value = "";
+      resetLoginCaptchaField(modal);
+      return captcha;
+    }).catch(function () {
+      if (question) {
+        question.textContent = "\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u062a\u062d\u0642\u0642 \u0627\u0644\u0623\u0645\u0646\u064a";
+        question.dataset.state = "error";
+      }
+      showToast("\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u062a\u062d\u0642\u0642 \u0627\u0644\u0623\u0645\u0646\u064a", "error");
+      return null;
+    }).finally(function () {
+      if (refresh) refresh.removeAttribute("data-state");
+    });
   }
 
   function accountModalShell(id, title, bodyHtml) {
@@ -773,13 +916,14 @@
       var next = qs("#new-password", modal).value;
       var confirm = qs("#confirm-password", modal).value;
       if (!current || !next || !confirm) { accountModalMessage(modal, "جميع الحقول مطلوبة."); return; }
-      if (current !== String(config.passcode || "")) { accountModalMessage(modal, "كلمة المرور الحالية غير صحيحة."); return; }
       if (next !== confirm) { accountModalMessage(modal, "كلمة المرور الجديدة وتأكيدها غير متطابقين."); return; }
-      var saved = loadAccountSettings();
-      saved.passcode = next;
-      saveAccountSettings(saved);
-      closeLoginModal();
-      showToast("تم تغيير كلمة المرور بنجاح", "success");
+      window.SiteStore.changePassword(current, next, confirm).then(function () {
+        closeLoginModal();
+        showToast("تم تغيير كلمة المرور بنجاح", "success");
+      }).catch(function (error) {
+        accountModalMessage(modal, error.message || "تعذر تغيير كلمة المرور.");
+      });
+      return;
     };
   }
 
@@ -796,13 +940,14 @@
       var email = qs("#new-email", modal).value.trim();
       var password = qs("#email-password", modal).value;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { accountModalMessage(modal, "أدخل بريدًا إلكترونيًا صحيحًا."); return; }
-      if (password !== String(config.passcode || "")) { accountModalMessage(modal, "كلمة المرور الحالية غير صحيحة."); return; }
-      var saved = loadAccountSettings();
-      saved.email = email;
-      saveAccountSettings(saved);
-      renderAccountMenu(appState.data || window.SiteStore.load());
-      closeLoginModal();
-      showToast("تم تغيير البريد الإلكتروني بنجاح", "success");
+      window.SiteStore.changeEmail(email, password).then(function () {
+        renderAccountMenu(appState.data || window.SiteStore.current());
+        closeLoginModal();
+        showToast("تم تغيير البريد الإلكتروني بنجاح", "success");
+      }).catch(function (error) {
+        accountModalMessage(modal, error.message || "تعذر تغيير البريد الإلكتروني.");
+      });
+      return;
     };
   }
 
@@ -819,35 +964,36 @@
       var phone = qs("#new-phone", modal).value.trim();
       var password = qs("#phone-password", modal).value;
       if (!phone) { accountModalMessage(modal, "رقم الجوال مطلوب."); return; }
-      if (password !== String(config.passcode || "")) { accountModalMessage(modal, "كلمة المرور الحالية غير صحيحة."); return; }
-      var saved = loadAccountSettings();
-      saved.phone = phone;
-      saveAccountSettings(saved);
-      var data = appState.data || window.SiteStore.load();
-      data.settings.phoneNumber = phone;
-      appState.data = window.SiteStore.save(data);
-      closeLoginModal();
-      renderAccountMenu(appState.data);
-      showToast("تم تغيير رقم الجوال بنجاح", "success");
+      window.SiteStore.changePhone(phone, password).then(function () {
+        return window.SiteStore.load(true);
+      }).then(function (loadedData) {
+        appState.data = loadedData;
+        closeLoginModal();
+        renderShared(appState.data);
+        showToast("تم تغيير رقم الجوال بنجاح", "success");
+      }).catch(function (error) {
+        accountModalMessage(modal, error.message || "تعذر تغيير رقم الجوال.");
+      });
+      return;
     };
   }
 
   function logoutUser() {
-    var config = currentAuthConfig();
-    sessionStorage.removeItem(config.sessionKey || "websiteDemo:adminSession");
     prepareOverlayForLoginModal();
     qsa("[data-account-action='logout'], .account-persona-trigger, .account-menu-item, .mobile-account-section").forEach(function (node) {
       node.removeAttribute("data-status");
       node.removeAttribute("data-state");
       node.classList.remove("nds-success", "success", "active", "selected", "is-active");
     });
-    renderAccountMenu(appState.data || window.SiteStore.load());
-    window.dispatchEvent(new CustomEvent("site:admin-logout"));
-    showToast("تم تسجيل الخروج بنجاح", "success");
+    window.SiteStore.logout().then(function () {
+      renderAccountMenu(appState.data || window.SiteStore.current());
+      window.dispatchEvent(new CustomEvent("site:admin-logout"));
+      showToast("تم تسجيل الخروج بنجاح", "success");
+    });
   }
 
   function clearLoginFeedback() {
-    ["#login-email-field", "#login-password-field"].forEach(function (selector) {
+    ["#login-email-field", "#login-password-field", "#login-captcha-field"].forEach(function (selector) {
       var field = qs(selector);
       if (!field) return;
       if (window.NDS && window.NDS.Forms && window.NDS.Forms.clearStatus) {
@@ -938,6 +1084,13 @@
         return;
       }
 
+      var captchaRefresh = event.target.closest("[data-login-captcha-refresh]");
+      if (captchaRefresh) {
+        event.preventDefault();
+        loadLoginCaptcha();
+        return;
+      }
+
       var accountAction = event.target.closest("[data-account-action]");
       if (accountAction && accountAction.dataset.accountAction !== "portal") {
         event.preventDefault();
@@ -981,30 +1134,20 @@
 
       var emailInput = qs("#login-email");
       var passInput = qs("#login-password");
+      var captchaInput = qs("#login-captcha-answer");
       var loginBtn = qs("#loginSubmitBtn");
       var email = emailInput ? emailInput.value.trim().toLowerCase() : "";
       var pass = passInput ? passInput.value : "";
-      var expectedEmail = String(config.email || "admin@gmail.com").toLowerCase();
-      var expectedPass = String(config.passcode || "1234");
-      if (email !== expectedEmail || pass !== expectedPass) {
+      var captchaAnswer = captchaInput ? captchaInput.value.trim() : "";
+      if (!captchaAnswer) {
         clearLoginFeedback();
-        if (email !== expectedEmail) {
-          setLoginFieldFeedback("#login-email-field", "\u0623\u062f\u062e\u0644 \u0628\u0631\u064a\u062f \u0627\u0644\u0645\u062f\u064a\u0631: " + expectedEmail);
-          if (emailInput) emailInput.focus();
-        }
-        if (pass !== expectedPass) {
-          setLoginFieldFeedback("#login-password-field", "\u0623\u062f\u062e\u0644 \u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u0627\u0644\u0645\u062f\u064a\u0631: " + expectedPass);
-          if (email === expectedEmail && passInput) passInput.focus();
-        }
-        showToast("\u062a\u0639\u0630\u0631 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644", "error");
+        setLoginFieldFeedback("#login-captcha-field", "\u0623\u062f\u062e\u0644 \u0646\u0627\u062a\u062c \u0627\u0644\u062a\u062d\u0642\u0642 \u0627\u0644\u0623\u0645\u0646\u064a.");
         return;
       }
-
       if (loginBtn) loginBtn.dataset.state = "loading";
-      window.setTimeout(function () {
+      window.SiteStore.login(email, pass, captchaAnswer).then(function () {
         if (loginBtn) loginBtn.removeAttribute("data-state");
-        sessionStorage.setItem(config.sessionKey || "websiteDemo:adminSession", "true");
-        renderAccountMenu(appState.data || window.SiteStore.load());
+        renderAccountMenu(appState.data || window.SiteStore.current());
         closeLoginModal();
         loginForm.reset();
         clearLoginFeedback();
@@ -1014,7 +1157,18 @@
         } else {
           window.dispatchEvent(new CustomEvent("site:admin-login-success"));
         }
-      }, 350);
+      }).catch(function (error) {
+        if (loginBtn) loginBtn.removeAttribute("data-state");
+        clearLoginFeedback();
+        if (error && error.payload && error.payload.code === "captcha_invalid") {
+          setLoginFieldFeedback("#login-captcha-field", "\u0627\u0644\u062a\u062d\u0642\u0642 \u0627\u0644\u0623\u0645\u0646\u064a \u063a\u064a\u0631 \u0635\u062d\u064a\u062d.");
+        } else {
+          setLoginFieldFeedback("#login-email-field", "تحقق من بريد المدير.");
+          setLoginFieldFeedback("#login-password-field", "تحقق من كلمة المرور.");
+        }
+        loadLoginCaptcha();
+        showToast("\u062a\u0639\u0630\u0631 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644", "error");
+      });
     });
   }
 
@@ -1172,6 +1326,36 @@
     if (trigger) trigger.click();
   }
 
+  function dismissNdsHeaderOverlays() {
+    if (window.NDS && window.NDS.Mainnav && window.NDS.Mainnav.dismissOverlays) {
+      window.NDS.Mainnav.dismissOverlays();
+      return true;
+    }
+    return false;
+  }
+
+  function hasVisibleManagedOverlay() {
+    return Boolean(
+      qs(".nds-modal:not([hidden])[aria-hidden='false']")
+      || qs(".nds-dropdown[data-state~='open'], .nds-dropdown[data-state~='opening']")
+      || qs("[data-nav-panel][data-state~='open'], [data-nav-panel][data-state~='opening']")
+    );
+  }
+
+  function resetBackdropWhenIdle() {
+    window.setTimeout(function () {
+      if (hasVisibleManagedOverlay()) return;
+      if (window.NDS && window.NDS.Modal && window.NDS.Modal.isOpen && window.NDS.Modal.isOpen()) return;
+      if (window.NDS && window.NDS.Backdrop && window.NDS.Backdrop.isActive && window.NDS.Backdrop.isActive()) {
+        if (window.NDS.Backdrop.reset) {
+          window.NDS.Backdrop.reset();
+        } else {
+          window.NDS.Backdrop.hide();
+        }
+      }
+    }, 140);
+  }
+
   function setupNotifications() {
     document.addEventListener("click", function (event) {
       if (event.target.closest("[data-mobile-admin-shortcut], .mobile-account-trigger")) {
@@ -1288,7 +1472,8 @@
     }, duration + 40);
   }
 
-  function closeNotificationDropdown() {
+  function closeNotificationDropdown(options) {
+    if (!(options && options.localOnly)) dismissNdsHeaderOverlays();
     qsa("[data-notifications-root], [data-mobile-notifications-root]").forEach(function (root) {
       root.dataset.state = "";
       root.removeAttribute("data-state");
@@ -1299,9 +1484,11 @@
         trigger.setAttribute("aria-expanded", "false");
       }
     });
+    resetBackdropWhenIdle();
   }
 
-  function closeMobileAccountDropdown() {
+  function closeMobileAccountDropdown(options) {
+    if (!(options && options.localOnly)) dismissNdsHeaderOverlays();
     qsa("[data-mobile-admin-shortcut]").forEach(function (root) {
       root.dataset.state = "";
       root.removeAttribute("data-state");
@@ -1312,6 +1499,7 @@
         trigger.setAttribute("aria-expanded", "false");
       }
     });
+    resetBackdropWhenIdle();
   }
 
   function closeNavPanel(options) {
@@ -1449,13 +1637,17 @@
   }
 
   function toggleTheme(origin) {
-    var data = appState.data || window.SiteStore.load();
+    var data = appState.data || window.SiteStore.current();
     var current = data.settings.theme || localStorage.getItem("websiteDemo:theme") || "light";
     var next = current === "dark" ? "light" : "dark";
     data.settings.theme = next;
     appState.data = data;
     applyTheme(next, true, origin);
-    appState.data = window.SiteStore.save(data);
+    if (isAdminAuthenticated()) {
+      window.SiteStore.save(data).then(function (savedData) {
+        appState.data = savedData;
+      }).catch(function () {});
+    }
   }
 
   function applyTheme(theme, announce, origin) {
@@ -1630,7 +1822,7 @@
     nodes.forEach(function (node) {
       node.dateTime = now.toISOString();
       node.innerHTML = [
-        '<span class="site-datetime-item"><i class="hgi hgi-stroke hgi-calendar-01" aria-hidden="true"></i><span>' + dateLabel + '</span></span>',
+        '<span class="site-datetime-item"><i class="nds-icon nds-hgi-calendar-03" aria-hidden="true"></i><span>' + dateLabel + '</span></span>',
         '<span class="site-datetime-item"><i class="nds-icon nds-hgi-clock-01" aria-hidden="true"></i><span>' + timeLabel + '</span></span>'
       ].join("");
     });
@@ -1667,7 +1859,7 @@
       node.dateTime = now.toISOString();
       node.title = dateLabel + " - " + timeLabel;
       node.innerHTML = [
-        '<span class="site-datetime-item"><i class="hgi hgi-stroke hgi-calendar-01" aria-hidden="true"></i><span>' + displayDate + '</span></span>',
+        '<span class="site-datetime-item"><i class="nds-icon nds-hgi-calendar-03" aria-hidden="true"></i><span>' + displayDate + '</span></span>',
         '<span class="site-datetime-item"><i class="nds-icon nds-hgi-clock-01" aria-hidden="true"></i><span>' + timeLabel + '</span></span>'
       ].join("");
     });
@@ -1757,6 +1949,9 @@
   function heroSlidesSignature(slides) {
     return JSON.stringify(slides.map(function (slide) {
       return {
+        title: slide.title || "",
+        subtitle: slide.subtitle || "",
+        intro: slide.intro || "",
         image: slide.image || "",
         mobileImage: slide.mobileImage || "",
         video: slide.video || "",
@@ -1792,6 +1987,7 @@
       desktopVideo.type = videoMimeType(slide.video || slide.mobileVideo);
       video.append(desktopVideo);
       article.append(video);
+      appendHeroSlideCopy(article, slide);
       return article;
     }
 
@@ -1813,7 +2009,28 @@
       article.append(picture);
     }
 
+    appendHeroSlideCopy(article, slide);
     return article;
+  }
+
+  function appendHeroSlideCopy(article, slide) {
+    if (![slide.title, slide.subtitle, slide.intro].some(hasText)) return;
+    var copy = el("div", "hero-slide-copy site-container");
+    var inner = el("div", "hero-slide-copy-inner");
+    if (hasText(slide.subtitle)) {
+      var subtitle = el("p", "hero-slide-subtitle", slide.subtitle);
+      inner.append(subtitle);
+    }
+    if (hasText(slide.title)) {
+      var title = el("h2", "hero-slide-title", slide.title);
+      inner.append(title);
+    }
+    if (hasText(slide.intro)) {
+      var intro = el("p", "hero-slide-description", slide.intro);
+      inner.append(intro);
+    }
+    copy.append(inner);
+    article.append(copy);
   }
 
   function renderHeroDots(dots, count) {
@@ -1861,7 +2078,7 @@
   }
 
   function setHeroIndex(index) {
-    var home = (appState.data && appState.data.home) || window.SiteStore.load().home;
+    var home = (appState.data && appState.data.home) || window.SiteStore.current().home;
     var slides = visibleHeroSlides(home);
     var root = qs("[data-hero-slides]");
     var dots = qs("[data-hero-dots]");
@@ -1889,7 +2106,7 @@
   }
 
   function renderExtraPage(data, slug) {
-    var page = data.pages.find(function (item) { return item.slug === slug; });
+    var page = visibleItems(data.pages || []).find(function (item) { return item.slug === slug; });
     var titleNodes = qsa("[data-extra-page-title]");
     var body = qs("[data-extra-page-content]");
     if (!titleNodes.length || !body) return;
@@ -1897,11 +2114,13 @@
     body.innerHTML = "";
     if (!page) {
       titleNodes.forEach(function (node) { node.textContent = "الصفحة غير موجودة"; });
+      updateDocumentTitle(data, "الصفحة غير موجودة");
       body.append(emptyState("لم يتم العثور على الصفحة المطلوبة", "يمكنك العودة إلى الصفحة الرئيسية أو إنشاء الصفحة من لوحة الإدارة."));
       return;
     }
 
     titleNodes.forEach(function (node) { node.textContent = page.title || ""; });
+    updateDocumentTitle(data, page.title || navigationLabel(data, "pagesLabel", "الصفحات"));
     if (!hasText(page.content)) {
       body.append(emptyState("لم تتم إضافة محتوى لهذه الصفحة بعد", "يمكن تعديل هذه الصفحة من لوحة الإدارة."));
       return;
@@ -1924,6 +2143,8 @@
 
   function renderHtmlPageContent(root, html) {
     var wrapper = el("div", "rich-html-content");
+    wrapper.lang = document.documentElement.lang || "ar";
+    wrapper.dir = document.documentElement.dir || "rtl";
     var prepared = prepareTrustedHtml(html);
     /* Trusted local-admin HTML only. Do not use this as public-user input without server-side sanitization. */
     wrapper.innerHTML = prepared.html;
@@ -2014,6 +2235,7 @@
   function renderListCards(selector, items, label) {
     var root = qs(selector);
     if (!root) return;
+    items = visibleItems(items || []);
     root.innerHTML = "";
     if (!items.length) {
       root.append(emptyState("لم تتم إضافة " + label + " بعد", "يمكن إضافة العناصر من لوحة الإدارة."));
@@ -2043,6 +2265,9 @@
   function renderChips(selector, items) {
     var root = qs(selector);
     if (!root) return;
+    items = visibleItems(items || []).map(function (item) {
+      return typeof item === "string" ? item : item.name;
+    }).filter(hasText);
     root.innerHTML = "";
     if (!items.length) {
       root.append(emptyState("لم تتم إضافة مجالات خبرة بعد", "يمكن إضافة المهارات من لوحة الإدارة."));
@@ -2080,6 +2305,9 @@
   function contactIconClass(type) {
     var icons = {
       linkedin: "nds-hgi-linkedin-02",
+      facebook: "nds-hgi-facebook-02",
+      instagram: "hgi hgi-stroke hgi-instagram",
+      youtube: "nds-hgi-youtube",
       github: "hgi hgi-stroke hgi-github",
       x: "nds-hgi-new-twitter",
       email: "nds-hgi-mail-01",
@@ -2105,16 +2333,17 @@
   function renderProjectsPage(data) {
     var empty = qs("[data-projects-empty]");
     var content = qs("[data-projects-content]");
-    var hasProjects = data.projects.length > 0;
+    var projects = visibleItems(data.projects || []);
+    var hasProjects = projects.length > 0;
     if (empty) empty.hidden = hasProjects;
     if (content) content.hidden = !hasProjects;
     if (!hasProjects) return;
 
-    renderProjectFilters(data.projects);
+    renderProjectFilters(projects);
     var visible = data.projects.map(function (project, index) {
       return { project: project, index: index };
     }).filter(function (entry) {
-      return appState.projectFilter === "all" || entry.project.category === appState.projectFilter;
+      return entry.project.visible !== false && (appState.projectFilter === "all" || entry.project.category === appState.projectFilter);
     });
     renderProjects(visible);
   }
@@ -2171,6 +2400,7 @@
   function renderProjectDetailPage(data) {
     var index = Number(new URLSearchParams(location.search).get("id"));
     var project = Number.isInteger(index) ? data.projects[index] : null;
+    if (project && project.visible === false) project = null;
     var titleNodes = qsa("[data-project-detail-title]");
     var body = qs("[data-project-detail-body]");
     if (!body) return;
@@ -2178,11 +2408,13 @@
 
     if (!project) {
       titleNodes.forEach(function (node) { node.textContent = "المشروع غير موجود"; });
+      updateDocumentTitle(data, "المشروع غير موجود");
       body.append(emptyState("لم يتم العثور على المشروع المطلوب", "يمكنك العودة إلى صفحة مشاريعنا واختيار مشروع آخر."));
       return;
     }
 
     titleNodes.forEach(function (node) { node.textContent = project.title || "تفاصيل المشروع"; });
+    updateDocumentTitle(data, project.title || "تفاصيل المشروع");
     var detail = el("article", "project-detail nds-card nds-stroke");
     var content = el("div", "nds-card-content project-detail-content");
     if (hasText(project.image)) {
@@ -2405,16 +2637,25 @@
   }
 
   function render() {
-    appState.data = window.SiteStore.load();
-    renderShared(appState.data);
-    if (document.body.dataset.page === "home") renderHome(appState.data);
-    if (document.body.dataset.page === "projects") renderProjectsPage(appState.data);
-    if (document.body.dataset.page === "project-detail") renderProjectDetailPage(appState.data);
-    if (document.body.dataset.page === "pages") renderPagesPage(appState.data);
-    if (document.body.dataset.page === "notifications") renderNotificationsPage();
-    if (window.NDS && window.NDS.Mainnav && window.NDS.Mainnav.init) window.NDS.Mainnav.init();
-    updateHeaderActions(appState.data);
-    revealHeaderShell();
+    document.documentElement.dataset.siteLoading = "true";
+    return window.SiteStore.load().then(function (loadedData) {
+      appState.data = loadedData;
+      renderShared(appState.data);
+      if (document.body.dataset.page === "home") renderHome(appState.data);
+      if (document.body.dataset.page === "projects") renderProjectsPage(appState.data);
+      if (document.body.dataset.page === "project-detail") renderProjectDetailPage(appState.data);
+      if (document.body.dataset.page === "pages") renderPagesPage(appState.data);
+      if (document.body.dataset.page === "notifications") renderNotificationsPage();
+      if (window.NDS && window.NDS.Mainnav && window.NDS.Mainnav.init) window.NDS.Mainnav.init();
+      updateHeaderActions(appState.data);
+      revealHeaderShell();
+      document.documentElement.dataset.siteLoading = "false";
+    }).catch(function (error) {
+      appState.data = window.SiteStore.current();
+      renderShared(appState.data);
+      showToast(error.message || "تعذر تحميل بيانات الموقع", "error");
+      document.documentElement.dataset.siteLoading = "false";
+    });
   }
 
   var appInitialized = false;
@@ -2422,6 +2663,8 @@
   function initApp() {
     if (appInitialized) return;
     appInitialized = true;
+    var cachedData = readCachedSiteData();
+    if (cachedData) applyShellText(cachedData);
     setupNavToggle();
     setupDropmenus();
     setupThemeToggle();
@@ -2433,7 +2676,7 @@
     setupNotifications();
     setupNotificationsPageEvents();
     setupToastEvents();
-    render();
+    window.SiteStore.me().then(render).catch(render);
   }
 
   if (document.body) {
@@ -2445,6 +2688,9 @@
   window.addEventListener("hashchange", render);
   window.addEventListener("site:datachange", function () {
     render();
+  });
+  window.addEventListener("site:authchange", function () {
+    renderAccountMenu(appState.data || window.SiteStore.current());
   });
 
   window.SiteApp = {

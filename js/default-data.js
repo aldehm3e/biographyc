@@ -4,7 +4,7 @@
   window.DEFAULT_SITE_DATA = {
   "settings": {
     "siteName": "عبدالرحمن الصاعدي",
-    "brandName": "",
+    "brandName": "عبدالرحمن الصاعدي",
     "brandSlogan": "موقع شخصي",
     "brandLogo": "",
     "language": "ar",
@@ -16,8 +16,8 @@
   "navigation": {
     "homeLabel": "الرئيسية",
     "projectsLabel": "مشاريعنا",
-    "pagesLabel": "رلابيلا",
-    "adminLabel": "الإدارة",
+    "pagesLabel": "ببيبي",
+    "adminLabel": "لوحة التحكم",
     "items": [
       {
         "label": "الرئيسية",
@@ -32,13 +32,13 @@
         "visible": true
       },
       {
-        "label": "رلابيلا",
+        "label": "ببيبي",
         "url": "pages.html",
         "itemType": "pages",
         "visible": true
       },
       {
-        "label": "الإدارة",
+        "label": "لوحة التحكم",
         "url": "admin.html",
         "itemType": "admin",
         "visible": true
@@ -64,9 +64,9 @@
         "intro": "",
         "image": "",
         "mobileImage": "",
-        "video": "assets/video/SA_flag.mp4",
+        "video": "assets/video/SA_Flag.mp4",
         "mobileVideo": "",
-        "alt": "يبيلابيلا",
+        "alt": "",
         "visible": true
       },
       {
@@ -366,5 +366,14 @@
 
   window.ADMIN_AUTH_CONFIG = {
     sessionKey: "biographyc:adminSession"
+  };
+
+  window.SHOWCASE_DEMO = {
+    enabled: true,
+    email: "admin@gmail.com",
+    password: "1234",
+    captchaQuestion: "2 + 2",
+    captchaAnswer: "4",
+    sessionKey: "biographyc:showcaseAdminSession"
   };
 })();

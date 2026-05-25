@@ -2,6 +2,18 @@
 
 Arabic-first biography website built with vanilla HTML, CSS, JavaScript, PHP 8+, and MySQL/MariaDB. The public pages keep the current NDS visual language, while editable content now comes from the database through the PHP API.
 
+## Public Showcase Note
+
+This repository is prepared as a public showcase copy. It includes the current visible site content in `js/default-data.js` and `site-content.json`, but it does not include real database credentials or install locks.
+
+For exploration, the admin page supports a browser-local demo login:
+
+- Email: `admin@gmail.com`
+- Password: `1234`
+- CAPTCHA answer: `4`
+
+In this showcase mode, admin saves and uploads stay in the visitor's own browser storage/session. They do not write to a shared public database or to the original private project.
+
 This README is the project memory for future work. Read it before changing the site.
 
 ## Current Status
@@ -647,9 +659,9 @@ Use these notes as the current source of truth for the latest shell behavior.
 - Login is a popup dialog, not a dedicated login page.
 - The login modal uses the NDS structure `nds-modal nds-card nds-stroke nds-sm` with `id="login-modal"` and `role="dialog"`.
 - Login form direction is LTR because the email/password fields are English credential inputs.
-- Showcase credentials are not committed to this repository:
-  - Email: `admin@example.com`
-  - Password/passcode: not included in the showcase repository
+- Current local test credentials are configured in `js/default-data.js`:
+  - Email: `admin@gmail.com`
+  - Password/passcode: `1234`
 - After a successful login, the user is sent to `admin.html` / لوحة الادارة.
 - Logging out from `admin.html` sends the user back to the main page (`index.html`).
 - Login state is local/static only and remains for local testing. Replace it with real authentication before production use with multiple users.
@@ -662,7 +674,7 @@ Header and notification behavior:
 - The dropdown follows the NDS drawer/list structure and has slide-down/slide-up motion.
 - Clicking notification actions such as mark as read or dismiss must not close the dropdown.
 - Clicking "عرض كل الاشعارات" opens `notifications.html`.
-- Notifications are stored locally under `biographyc:notifications`.
+- Notifications are stored locally under `websiteDemo:notifications`.
 - Saving or updating home content, projects, or pages from the admin creates local notifications.
 - Dark/light mode toggle should not create a notification; the motion feedback is enough.
 
@@ -699,7 +711,7 @@ node --check js\store.js
 node --check js\app.js
 node --check js\admin.js
 node --check js\nds-local-components.js
-rg -n "Biography v1.0|غير تابع لأي جهة حكومية|admin@example.com|login-modal|biographyc:notifications" README.md js
+rg -n "Biography v1.0|غير تابع لأي جهة حكومية|admin@gmail.com|login-modal|websiteDemo:notifications" README.md js
 rg -n "nds-footer-meta|site-footer|data-footer-links|data-footer-social" . -g "*.html"
 rg -n "Biography v1.0|غير تابع لأي جهة حكومية" . -g "*.html"
 ```

@@ -1,7 +1,7 @@
 {
   "settings": {
     "siteName": "عبدالرحمن الصاعدي",
-    "brandName": "عبدالرحمن الصاعدي",
+    "brandName": "",
     "brandSlogan": "موقع شخصي",
     "brandLogo": "",
     "language": "ar",
@@ -13,8 +13,8 @@
   "navigation": {
     "homeLabel": "الرئيسية",
     "projectsLabel": "مشاريعنا",
-    "pagesLabel": "ببيبي",
-    "adminLabel": "لوحة التحكم",
+    "pagesLabel": "رلابيلا",
+    "adminLabel": "الإدارة",
     "items": [
       {
         "label": "الرئيسية",
@@ -29,13 +29,13 @@
         "visible": true
       },
       {
-        "label": "ببيبي",
+        "label": "رلابيلا",
         "url": "pages.html",
         "itemType": "pages",
         "visible": true
       },
       {
-        "label": "لوحة التحكم",
+        "label": "الإدارة",
         "url": "admin.html",
         "itemType": "admin",
         "visible": true
@@ -63,7 +63,7 @@
         "mobileImage": "",
         "video": "assets/video/SA_Flag.mp4",
         "mobileVideo": "",
-        "alt": "",
+        "alt": "يبيلابيلا",
         "visible": true
       },
       {
@@ -340,6 +340,138 @@
       "contentMode": "html",
       "content": "<section class=\"story-section\" dir=\"rtl\">\n    <style>\n        .story-section {\n            padding: 32px 0;\n        }\n\n        .story-wrapper {\n            display: grid;\n            grid-template-columns: 1fr;\n            gap: 20px;\n        }\n\n        .story-hero {\n            position: relative;\n            overflow: hidden;\n        }\n\n        .story-hero::before {\n            content: \"\";\n            position: absolute;\n            inset: 0;\n            background: radial-gradient(circle at top left, rgba(22, 163, 74, 0.12), transparent 40%),\n                        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.10), transparent 45%);\n            pointer-events: none;\n        }\n\n        .story-hero .nds-card-content {\n            position: relative;\n            z-index: 1;\n        }\n\n        .story-grid {\n            display: grid;\n            grid-template-columns: repeat(4, minmax(0, 1fr));\n            gap: 16px;\n        }\n\n        .story-card {\n            height: 100%;\n            transition: transform 0.25s ease, box-shadow 0.25s ease;\n        }\n\n        .story-card:hover {\n            transform: translateY(-6px);\n        }\n\n        .story-step {\n            display: inline-flex;\n            align-items: center;\n            justify-content: center;\n            width: 34px;\n            height: 34px;\n            border-radius: 999px;\n            font-weight: 800;\n            margin-bottom: 12px;\n        }\n\n        .story-card .nds-card-description {\n            line-height: 1.9;\n        }\n\n        @media (max-width: 992px) {\n            .story-grid {\n                grid-template-columns: repeat(2, minmax(0, 1fr));\n            }\n        }\n\n        @media (max-width: 640px) {\n            .story-grid {\n                grid-template-columns: 1fr;\n            }\n        }\n    </style>\n\n    <div class=\"story-wrapper\">\n\n        <div class=\"nds-card nds-stroke nds-shadow story-hero\">\n            <div class=\"nds-card-header\">\n                <div class=\"nds-card-featured-icon\">\n                    <span class=\"nds-featured-icon nds-circle nds-lg\">\n                        <i class=\"hgi hgi-stroke hgi-stars\"></i>\n                    </span>\n                </div>\n            </div>\n\n            <div class=\"nds-card-content\">\n                <div class=\"nds-card-text\">\n                    <h2 class=\"nds-card-title\"> رحلة بدأت من الشغف بالتقنية، وتطورت مع التجربة والتعلم إلى اهتمام أعمق بالبيانات والذكاء الاصطناعي، بهدف ابتكار حلول عملية تتواءم مع متطلبات الأعمال وتصنع فرقا حقيقيا.</h2>\n                </div>\n\n                <div class=\"nds-card-meta\">\n                    <div class=\"nds-card-tags\">\n                        <span class=\"nds-tag nds-blue nds-sm\">\n                            <span class=\"nds-label\">تقنية المعلومات</span>\n                        </span>\n                        <span class=\"nds-tag nds-green nds-sm\">\n                            <span class=\"nds-label\">إدارة البيانات</span>\n                        </span>\n                        <span class=\"nds-tag nds-gray nds-sm\">\n                            <span class=\"nds-label\">الذكاء الاصطناعي</span>\n                        </span>\n                    </div>\n                </div>\n            </div>\n        </div>\n\n        <div class=\"story-grid\">\n\n            <div class=\"nds-card nds-stroke nds-shadow story-card\">\n                <div class=\"nds-card-header\">\n                    <div class=\"nds-card-featured-icon\">\n                        <span class=\"nds-featured-icon nds-circle nds-lg\">\n                            <i class=\"hgi hgi-stroke hgi-location-01\"></i>\n                        </span>\n                    </div>\n                </div>\n                <div class=\"nds-card-content\">\n                    <span class=\"story-step nds-tag nds-blue nds-sm\">١</span>\n                    <div class=\"nds-card-text\">\n                        <h3 class=\"nds-card-title\">البدايات في ينبع</h3>\n                        <p class=\"nds-card-description\">\n                            ولدت في مدينة ينبع، وهناك بدأت أولى ملامح الفضول والرغبة في التعلم والاكتشاف منذ المراحل الأولى.\n                        </p>\n                    </div>\n                </div>\n            </div>\n\n            <div class=\"nds-card nds-stroke nds-shadow story-card\">\n                <div class=\"nds-card-header\">\n                    <div class=\"nds-card-featured-icon\">\n                        <span class=\"nds-featured-icon nds-circle nds-lg\">\n                            <i class=\"hgi hgi-stroke hgi-school\"></i>\n                        </span>\n                    </div>\n                </div>\n                <div class=\"nds-card-content\">\n                    <span class=\"story-step nds-tag nds-green nds-sm\">٢</span>\n                    <div class=\"nds-card-text\">\n                        <h3 class=\"nds-card-title\">مرحلة التعليم الأولى</h3>\n                        <p class=\"nds-card-description\">\n                            درست في ابتدائية أبي تمام، وكانت هذه المرحلة منطلقا لتكوين الاهتمام بالمعرفة والانضباط وبناء الأساس التعليمي.\n                        </p>\n                    </div>\n                </div>\n            </div>\n\n            <div class=\"nds-card nds-stroke nds-shadow story-card\">\n                <div class=\"nds-card-header\">\n                    <div class=\"nds-card-featured-icon\">\n                        <span class=\"nds-featured-icon nds-circle nds-lg\">\n                            <i class=\"hgi hgi-stroke hgi-maping\"></i>\n                        </span>\n                    </div>\n                </div>\n                <div class=\"nds-card-content\">\n                    <span class=\"story-step nds-tag nds-gray nds-sm\">٣</span>\n                    <div class=\"nds-card-text\">\n                        <h3 class=\"nds-card-title\">الانتقال إلى المدينة</h3>\n                        <p class=\"nds-card-description\">\n                            لاحقا انتقلت إلى المدينة المنورة، وكانت مرحلة مهمة في توسيع المدارك وخوض تجارب جديدة ساهمت في تشكيل المسار الشخصي والمهني.\n                        </p>\n                    </div>\n                </div>\n            </div>\n\n            <div class=\"nds-card nds-stroke nds-shadow story-card\">\n                <div class=\"nds-card-header\">\n                    <div class=\"nds-card-featured-icon\">\n                        <span class=\"nds-featured-icon nds-circle nds-lg\">\n                            <i class=\"hgi hgi-stroke hgi-computer\"></i>\n                        </span>\n                    </div>\n                </div>\n                <div class=\"nds-card-content\">\n                    <span class=\"story-step nds-tag nds-blue nds-sm\">٤</span>\n                    <div class=\"nds-card-text\">\n                        <h3 class=\"nds-card-title\">الشغف بالتقنية</h3>\n                        <p class=\"nds-card-description\">\n                            بدأ شغفي بالتقنية منذ الدراسة الابتدائية، من خلال الاهتمام بالحاسب، وفهم طريقة عمل الأنظمة، والبحث عن حلول للمشكلات التقنية.\n                        </p>\n                    </div>\n                </div>\n            </div>\n\n            <div class=\"nds-card nds-stroke nds-shadow story-card\">\n                <div class=\"nds-card-header\">\n                    <div class=\"nds-card-featured-icon\">\n                        <span class=\"nds-featured-icon nds-circle nds-lg\">\n                            <i class=\"hgi hgi-stroke hgi-university\"></i>\n                        </span>\n                    </div>\n                </div>\n                <div class=\"nds-card-content\">\n                    <span class=\"story-step nds-tag nds-green nds-sm\">٥</span>\n                    <div class=\"nds-card-text\">\n                        <h3 class=\"nds-card-title\">الدراسة الجامعية</h3>\n                        <p class=\"nds-card-description\">\n                            التحقت بجامعة الملك عبدالعزيز بجدة لدراسة تقنية المعلومات، وكان هذا المسار امتدادا طبيعيا للشغف المبكر بالتقنية.\n                        </p>\n                    </div>\n                </div>\n            </div>\n\n            <div class=\"nds-card nds-stroke nds-shadow story-card\">\n                <div class=\"nds-card-header\">\n                    <div class=\"nds-card-featured-icon\">\n                        <span class=\"nds-featured-icon nds-circle nds-lg\">\n                            <i class=\"hgi hgi-stroke hgi-graduation-scroll\"></i>\n                        </span>\n                    </div>\n                </div>\n                <div class=\"nds-card-content\">\n                    <span class=\"story-step nds-tag nds-gray nds-sm\">٦</span>\n                    <div class=\"nds-card-text\">\n                        <h3 class=\"nds-card-title\">البكالوريوس</h3>\n                        <p class=\"nds-card-description\">\n                            حصلت على درجة البكالوريوس في تقنية المعلومات، واكتسبت معرفة أساسية في الأنظمة، قواعد البيانات، والتحليل التقني.\n                        </p>\n                    </div>\n                </div>\n            </div>\n\n            <div class=\"nds-card nds-stroke nds-shadow story-card\">\n                <div class=\"nds-card-header\">\n                    <div class=\"nds-card-featured-icon\">\n                        <span class=\"nds-featured-icon nds-circle nds-lg\">\n                            <i class=\"hgi hgi-stroke hgi-certificate-01\"></i>\n                        </span>\n                    </div>\n                </div>\n                <div class=\"nds-card-content\">\n                    <span class=\"story-step nds-tag nds-blue nds-sm\">٧</span>\n                    <div class=\"nds-card-text\">\n                        <h3 class=\"nds-card-title\">الشهادات المتخصصة</h3>\n                        <p class=\"nds-card-description\">\n                            واصلت تطوير مهاراتي بالحصول على شهادات تقنية دولية متخصصة، من أبرزها شهادة CDMP في إدارة البيانات وحوكمتها.\n                        </p>\n                    </div>\n                </div>\n            </div>\n\n            <div class=\"nds-card nds-stroke nds-shadow story-card\">\n                <div class=\"nds-card-header\">\n                    <div class=\"nds-card-featured-icon\">\n                        <span class=\"nds-featured-icon nds-circle nds-lg\">\n                            <i class=\"hgi hgi-stroke hgi-ai-brain-02\"></i>\n                        </span>\n                    </div>\n                </div>\n                <div class=\"nds-card-content\">\n                    <span class=\"story-step nds-tag nds-green nds-sm\">٨</span>\n                    <div class=\"nds-card-text\">\n                        <h3 class=\"nds-card-title\">الأثر والابتكار</h3>\n                        <p class=\"nds-card-description\">\n                            أسعى إلى ابتكار حلول عملية تتواءم مع متطلبات الأعمال، وتصنع فرقا حقيقيا بالاستفادة من البيانات والذكاء الاصطناعي.\n                        </p>\n                    </div>\n                </div>\n            </div>\n\n        </div>\n\n    </div>\n</section>",
       "visible": true
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notification-rmga2r",
+      "key": "admin:page:page-1779822162311",
+      "status": "info",
+      "tag": "جديد",
+      "title": "تمت إضافة صفحة جديدة",
+      "description": "تم نشر صفحة جديدة: fdfd.",
+      "href": "pages.html",
+      "createdAt": "2026-05-26T19:02:45.583Z"
+    },
+    {
+      "id": "notification-xu34au",
+      "key": "admin:page:page-1779822076704",
+      "status": "info",
+      "tag": "جديد",
+      "title": "تمت إضافة صفحة جديدة",
+      "description": "تم نشر صفحة جديدة: صفحة جديدة.",
+      "href": "pages.html",
+      "createdAt": "2026-05-26T19:01:52.710Z"
+    },
+    {
+      "id": "notification-nkytdi",
+      "key": "admin:project:trtr",
+      "status": "success",
+      "tag": "جديد",
+      "title": "تمت إضافة مشروع جديد",
+      "description": "تم نشر مشروع جديد: trtr.",
+      "href": "projects.html",
+      "createdAt": "2026-05-26T19:01:35.801Z"
+    },
+    {
+      "id": "notification-qg2f2q",
+      "key": "admin:home:update",
+      "status": "success",
+      "tag": "تحديث",
+      "title": "تم تحديث الصفحة الرئيسية",
+      "description": "تم حفظ محتوى السيرة أو القسم الرئيسي أو التواصل أو الملف الشخصي من لوحة الإدارة.",
+      "href": "index.html",
+      "createdAt": "2026-05-26T18:23:05.721Z"
+    },
+    {
+      "id": "notification-s6b5tq",
+      "key": "admin:page:page-1779819709322",
+      "status": "info",
+      "tag": "جديد",
+      "title": "تمت إضافة صفحة جديدة",
+      "description": "تم نشر صفحة جديدة: dsdsd.",
+      "href": "pages.html",
+      "createdAt": "2026-05-26T18:22:00.167Z"
+    },
+    {
+      "id": "notification-nwaau7",
+      "key": "admin:project:fdfd",
+      "status": "success",
+      "tag": "جديد",
+      "title": "تمت إضافة مشروع جديد",
+      "description": "تم نشر مشروع جديد: fdfd.",
+      "href": "projects.html",
+      "createdAt": "2026-05-26T18:21:36.862Z"
+    },
+    {
+      "id": "notification-h3sfov",
+      "key": "admin:project:dsd",
+      "status": "success",
+      "tag": "جديد",
+      "title": "تمت إضافة مشروع جديد",
+      "description": "تم نشر مشروع جديد: dsds.",
+      "href": "projects.html",
+      "createdAt": "2026-05-26T18:19:57.846Z"
+    },
+    {
+      "id": "notification-6wk4ct",
+      "key": "admin:page:page-1779819571954",
+      "status": "info",
+      "tag": "جديد",
+      "title": "تمت إضافة صفحة جديدة",
+      "description": "تم نشر صفحة جديدة: dsdsdsd.",
+      "href": "pages.html",
+      "createdAt": "2026-05-26T18:19:36.886Z"
+    },
+    {
+      "id": "notification-wss19x",
+      "key": "admin:page:page-1779819558082",
+      "status": "info",
+      "tag": "جديد",
+      "title": "تمت إضافة صفحة جديدة",
+      "description": "تم نشر صفحة جديدة: dsd.",
+      "href": "pages.html",
+      "createdAt": "2026-05-26T18:19:27.931Z"
+    },
+    {
+      "id": "notification-2poj4e",
+      "key": "admin:project:vcv",
+      "status": "success",
+      "tag": "جديد",
+      "title": "تمت إضافة مشروع جديد",
+      "description": "تم نشر مشروع جديد: vcv.",
+      "href": "projects.html",
+      "createdAt": "2026-05-26T18:10:04.593Z"
+    },
+    {
+      "id": "notification-pk2e3y",
+      "key": "admin:skills:cc",
+      "status": "info",
+      "tag": "جديد",
+      "title": "تمت إضافة مهارة جديدة",
+      "description": "تمت إضافة مهارة جديدة: cc.",
+      "href": "index.html",
+      "createdAt": "2026-05-26T18:08:17.084Z"
+    },
+    {
+      "id": "notification-ym6dnv",
+      "key": "admin:achievements:cc",
+      "status": "success",
+      "tag": "جديد",
+      "title": "تمت إضافة إنجاز جديد",
+      "description": "تمت إضافة إنجاز جديد: cc.",
+      "href": "index.html",
+      "createdAt": "2026-05-26T18:08:17.019Z"
+    },
+    {
+      "id": "notification-pplcq0",
+      "key": "admin:experience:cc",
+      "status": "success",
+      "tag": "جديد",
+      "title": "تمت إضافة خبرة جديدة",
+      "description": "تمت إضافة خبرة جديدة: cc.",
+      "href": "index.html",
+      "createdAt": "2026-05-26T18:08:16.941Z"
     }
   ]
 }

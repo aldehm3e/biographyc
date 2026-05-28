@@ -1,8 +1,10 @@
 (function () {
   "use strict";
 
-  var DATA_KEY = "websiteDemo:siteData";
+  var IS_SHOWCASE = Boolean(window.SHOWCASE_SITE_DATA);
+  var DATA_KEY = IS_SHOWCASE ? "websiteDemo:biographycSiteData" : "websiteDemo:siteData";
   var PREVIEW_KEY = "websiteDemo:previewData";
+  var AUTH_KEY = "websiteDemo:biographycDemoUser";
   var API = {
     getSite: "api/content/get-site.php",
     saveSite: "api/content/save-site.php",
@@ -110,7 +112,7 @@
   }
 
   function fallbackData() {
-    return normalize(readLocal() || window.DEFAULT_SITE_DATA || {});
+    return normalize(readLocal() || window.SHOWCASE_SITE_DATA || window.DEFAULT_SITE_DATA || {});
   }
 
   function requestJson(url, options) {
@@ -207,7 +209,39 @@
       body: JSON.stringify({ data: cleanData })
     }).then(function (payload) {
       return setCurrent(payload.data || cleanData, true);
+    }).catch(function (error) {
+      if (!IS_SHOWCASE) throw error;
+      console.warn("Saving showcase changes locally because the PHP API is unavailable.", error);
+      return setCurrent(cleanData, true);
     });
+  }
+
+  function demoUser() {
+    return {
+      id: "demo-owner",
+      email: "admin@admin.com",
+      displayName: "Showcase Admin",
+      display_name: "Showcase Admin",
+      role: "owner",
+      permissions: ["*"]
+    };
+  }
+
+  function readDemoUser() {
+    if (!IS_SHOWCASE) return null;
+    try {
+      return sessionStorage.getItem(AUTH_KEY) === "1" ? demoUser() : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeDemoUser(active) {
+    if (!IS_SHOWCASE) return;
+    try {
+      if (active) sessionStorage.setItem(AUTH_KEY, "1");
+      else sessionStorage.removeItem(AUTH_KEY);
+    } catch (error) {}
   }
 
   window.SiteStore = {
@@ -228,7 +262,7 @@
 
     reset: function () {
       localStorage.removeItem(DATA_KEY);
-      return save(window.DEFAULT_SITE_DATA || {});
+      return save(window.SHOWCASE_SITE_DATA || window.DEFAULT_SITE_DATA || {});
     },
 
     exportJson: function () {
@@ -255,8 +289,8 @@
           return currentUser ? clone(currentUser) : null;
         })
         .catch(function () {
-          currentUser = null;
-          return null;
+          currentUser = readDemoUser();
+          return currentUser ? clone(currentUser) : null;
         });
     },
 
@@ -267,6 +301,9 @@
     captcha: function () {
       return requestJson(API.captcha).then(function (payload) {
         return payload.captcha || null;
+      }).catch(function (error) {
+        if (!IS_SHOWCASE) throw error;
+        return { question: "2 + 2 =", expires_in: 600 };
       });
     },
 
@@ -278,6 +315,17 @@
         currentUser = payload.user || null;
         window.dispatchEvent(new CustomEvent("site:authchange", { detail: { user: currentUser } }));
         return currentUser ? clone(currentUser) : null;
+      }).catch(function (error) {
+        if (!IS_SHOWCASE) throw error;
+        if (String(email || "").trim().toLowerCase() !== "admin@admin.com" || String(password || "") !== "1234" || String(captchaAnswer || "").trim() !== "4") {
+          var loginError = new Error("Invalid demo credentials.");
+          loginError.payload = { code: String(captchaAnswer || "").trim() !== "4" ? "captcha_invalid" : "demo_login_invalid" };
+          throw loginError;
+        }
+        currentUser = demoUser();
+        writeDemoUser(true);
+        window.dispatchEvent(new CustomEvent("site:authchange", { detail: { user: currentUser } }));
+        return clone(currentUser);
       });
     },
 
@@ -286,6 +334,7 @@
         return { success: true };
       }).then(function () {
         currentUser = null;
+        writeDemoUser(false);
         window.dispatchEvent(new CustomEvent("site:authchange", { detail: { user: null } }));
         return true;
       });

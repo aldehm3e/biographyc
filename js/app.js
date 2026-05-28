@@ -1307,6 +1307,14 @@
       '</form>'
     ].join("");
     document.body.append(modal);
+    if (window.SHOWCASE_SITE_DATA) {
+      var demoEmail = qs("#login-email", modal);
+      var demoPassword = qs("#login-password", modal);
+      var demoCaptcha = qs("#login-captcha-answer", modal);
+      if (demoEmail) demoEmail.value = "admin@admin.com";
+      if (demoPassword) demoPassword.value = "1234";
+      if (demoCaptcha) demoCaptcha.value = "4";
+    }
   }
 
   function initializeNdsLoginPackages() {
@@ -1468,7 +1476,7 @@
         question.textContent = captcha && captcha.question ? captcha.question : "";
         question.removeAttribute("data-state");
       }
-      if (input) input.value = "";
+      if (input) input.value = window.SHOWCASE_SITE_DATA ? "4" : "";
       resetLoginCaptchaField(modal);
       return captcha;
     }).catch(function () {

@@ -2,6 +2,8 @@
 
 This repository is a demo showcase for the original Biography CMS.
 
+The public pages load `js/showcase-data.js`, so the home hero, pages, projects, footer logos, and contact details can be explored even on static hosting where PHP/MySQL is not running.
+
 ## Demo Admin
 
 - URL: `admin.html`
@@ -10,6 +12,8 @@ This repository is a demo showcase for the original Biography CMS.
 - CAPTCHA: `2 + 2 = 4`
 
 These credentials are intentionally simple for discovery. Do not use them for production.
+
+On static hosting the demo admin saves edits to browser storage only. On PHP/MySQL hosting, import the SQL file below for the same starting content.
 
 ## Restore The Showcase Content
 

@@ -14,6 +14,8 @@ This repository is a showcase build. Use these demo admin credentials to explore
 
 The matching database export is `showcase/biographyc-demo.sql`. These credentials are for demo/discovery only, not production.
 
+The showcase content is also bundled in `js/showcase-data.js`, so the first hero, pages, projects, footer contact details, and logos show on static hosting without a database connection.
+
 ## Current Status
 
 - Database-backed CMS build for local Laragon/XAMPP testing and shared hosting deployment.

@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  var DATA_KEY = "biographyc:siteData:v20260526";
-  var PREVIEW_KEY = "biographyc:previewData:v20260526";
+  var DATA_KEY = "websiteDemo:siteData";
+  var PREVIEW_KEY = "websiteDemo:previewData";
   var API = {
     getSite: "api/content/get-site.php",
     saveSite: "api/content/save-site.php",
@@ -13,63 +13,16 @@
     changePassword: "api/auth/change-password.php",
     changeEmail: "api/auth/change-email.php",
     changePhone: "api/auth/change-phone.php",
-    uploadMedia: "api/upload/upload-media.php"
+    uploadMedia: "api/upload/upload-media.php",
+    listUsers: "api/auth/list-users.php",
+    saveUser: "api/auth/save-user.php",
+    deleteUser: "api/auth/delete-user.php"
   };
 
   var currentData = null;
   var currentUser = null;
   var activeLoad = null;
   var legacyLocalData = null;
-
-  function demoConfig() {
-    return window.SHOWCASE_DEMO || {};
-  }
-
-  function isDemoMode() {
-    return demoConfig().enabled === true;
-  }
-
-  function demoSessionKey() {
-    return demoConfig().sessionKey || "biographyc:showcaseAdminSession";
-  }
-
-  function demoUser(overrides) {
-    var config = demoConfig();
-    var data = currentData || fallbackData();
-    return Object.assign({
-      id: "showcase-admin",
-      name: data.home && data.home.ownerName ? data.home.ownerName : "Showcase Admin",
-      email: config.email || "admin@gmail.com",
-      phone: data.settings && data.settings.phoneNumber ? data.settings.phoneNumber : "",
-      role: "Administrator",
-      demo: true
-    }, overrides || {});
-  }
-
-  function readDemoSession() {
-    try {
-      var raw = localStorage.getItem(demoSessionKey());
-      return raw ? JSON.parse(raw) : null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  function writeDemoSession(user) {
-    try {
-      if (user) {
-        localStorage.setItem(demoSessionKey(), JSON.stringify({ user: user }));
-      } else {
-        localStorage.removeItem(demoSessionKey());
-      }
-    } catch (error) {}
-  }
-
-  function demoError(message, code) {
-    var error = new Error(message || "Request failed.");
-    error.payload = code ? { code: code } : {};
-    return error;
-  }
 
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -126,14 +79,34 @@
     cleanData.home.achievements = normalizeArray(cleanData.home.achievements);
     cleanData.home.skills = normalizeArray(cleanData.home.skills);
     cleanData.home.contacts = normalizeArray(cleanData.home.contacts);
+    cleanData.home.footerLinks = normalizeArray(cleanData.home.footerLinks);
+    cleanData.footer = normalizeFooter(cleanData.footer);
     cleanData.projects = normalizeArray(cleanData.projects);
     cleanData.pages = normalizeArray(cleanData.pages);
+    cleanData.integrations = normalizeArray(cleanData.integrations);
     cleanData.notifications = normalizeArray(cleanData.notifications);
     return cleanData;
   }
 
   function normalizeArray(value) {
     return Array.isArray(value) ? value : [];
+  }
+
+  function normalizeFooter(footer) {
+    footer = footer && typeof footer === "object" ? footer : {};
+    footer.columns = normalizeArray(footer.columns).map(function (column) {
+      column = column && typeof column === "object" ? column : {};
+      column.links = normalizeArray(column.links);
+      return column;
+    });
+    footer.iconGroups = normalizeArray(footer.iconGroups).map(function (group) {
+      group = group && typeof group === "object" ? group : {};
+      group.links = normalizeArray(group.links);
+      return group;
+    });
+    footer.bottomLinks = normalizeArray(footer.bottomLinks);
+    footer.logos = normalizeArray(footer.logos);
+    return footer;
   }
 
   function fallbackData() {
@@ -211,10 +184,6 @@
       currentData = normalize(previewData);
       return Promise.resolve(clone(currentData));
     }
-    if (isDemoMode()) {
-      currentData = fallbackData();
-      return Promise.resolve(clone(currentData));
-    }
     if (activeLoad && !force) return activeLoad.then(clone);
     activeLoad = requestJson(API.getSite)
       .then(function (payload) {
@@ -233,7 +202,6 @@
 
   function save(data) {
     var cleanData = normalize(data);
-    if (isDemoMode()) return Promise.resolve(setCurrent(cleanData, true));
     return requestJson(API.saveSite, {
       method: "POST",
       body: JSON.stringify({ data: cleanData })
@@ -281,11 +249,6 @@
     },
 
     me: function () {
-      if (isDemoMode()) {
-        var session = readDemoSession();
-        currentUser = session && session.user ? session.user : null;
-        return Promise.resolve(currentUser ? clone(currentUser) : null);
-      }
       return requestJson(API.me)
         .then(function (payload) {
           currentUser = payload.authenticated ? (payload.user || null) : null;
@@ -302,34 +265,12 @@
     },
 
     captcha: function () {
-      if (isDemoMode()) {
-        return Promise.resolve({
-          id: "showcase-captcha",
-          question: demoConfig().captchaQuestion || "2 + 2"
-        });
-      }
       return requestJson(API.captcha).then(function (payload) {
         return payload.captcha || null;
       });
     },
 
     login: function (email, password, captchaAnswer) {
-      if (isDemoMode()) {
-        var config = demoConfig();
-        var expectedEmail = String(config.email || "admin@gmail.com").toLowerCase();
-        var expectedPassword = String(config.password || "1234");
-        var expectedCaptcha = String(config.captchaAnswer || "4");
-        if (String(captchaAnswer || "").trim() !== expectedCaptcha) {
-          return Promise.reject(demoError("Security check is incorrect.", "captcha_invalid"));
-        }
-        if (String(email || "").toLowerCase() !== expectedEmail || String(password || "") !== expectedPassword) {
-          return Promise.reject(demoError("Invalid demo credentials."));
-        }
-        currentUser = demoUser();
-        writeDemoSession(currentUser);
-        window.dispatchEvent(new CustomEvent("site:authchange", { detail: { user: currentUser } }));
-        return Promise.resolve(clone(currentUser));
-      }
       return requestJson(API.login, {
         method: "POST",
         body: JSON.stringify({ email: email, password: password, captchaAnswer: captchaAnswer })
@@ -341,12 +282,6 @@
     },
 
     logout: function () {
-      if (isDemoMode()) {
-        currentUser = null;
-        writeDemoSession(null);
-        window.dispatchEvent(new CustomEvent("site:authchange", { detail: { user: null } }));
-        return Promise.resolve(true);
-      }
       return requestJson(API.logout, { method: "POST" }).catch(function () {
         return { success: true };
       }).then(function () {
@@ -357,15 +292,6 @@
     },
 
     changePassword: function (currentPassword, newPassword, confirmPassword) {
-      if (isDemoMode()) {
-        if (String(currentPassword || "") !== String(demoConfig().password || "1234")) {
-          return Promise.reject(demoError("كلمة المرور الحالية غير صحيحة."));
-        }
-        if (!newPassword || newPassword !== confirmPassword) {
-          return Promise.reject(demoError("كلمة المرور الجديدة وتأكيدها غير متطابقين."));
-        }
-        return Promise.resolve({ success: true, message: "Demo password accepted for this session." });
-      }
       return requestJson(API.changePassword, {
         method: "POST",
         body: JSON.stringify({
@@ -377,12 +303,6 @@
     },
 
     changeEmail: function (newEmail, currentPassword) {
-      if (isDemoMode()) {
-        currentUser = demoUser({ email: newEmail || (demoConfig().email || "admin@gmail.com") });
-        writeDemoSession(currentUser);
-        window.dispatchEvent(new CustomEvent("site:authchange", { detail: { user: currentUser } }));
-        return Promise.resolve({ success: true, user: clone(currentUser) });
-      }
       return requestJson(API.changeEmail, {
         method: "POST",
         body: JSON.stringify({ newEmail: newEmail, currentPassword: currentPassword })
@@ -394,12 +314,6 @@
     },
 
     changePhone: function (phone, currentPassword) {
-      if (isDemoMode()) {
-        currentUser = demoUser({ phone: phone || "" });
-        writeDemoSession(currentUser);
-        window.dispatchEvent(new CustomEvent("site:authchange", { detail: { user: currentUser } }));
-        return Promise.resolve({ success: true, user: clone(currentUser) });
-      }
       return requestJson(API.changePhone, {
         method: "POST",
         body: JSON.stringify({ phone: phone, currentPassword: currentPassword })
@@ -411,27 +325,37 @@
     },
 
     uploadMedia: function (file, type, onProgress) {
-      if (isDemoMode()) {
-        return new Promise(function (resolve) {
-          var steps = [12, 48, 76, 100];
-          steps.forEach(function (value, index) {
-            window.setTimeout(function () {
-              if (typeof onProgress === "function") onProgress(value);
-              if (value === 100) {
-                resolve({
-                  success: true,
-                  path: window.URL && window.URL.createObjectURL ? window.URL.createObjectURL(file) : "",
-                  message: "Demo upload completed in this browser session."
-                });
-              }
-            }, 160 * (index + 1));
-          });
-        });
-      }
       var formData = new FormData();
       formData.append("file", file);
       formData.append("type", type || "image");
       return uploadJson(API.uploadMedia, formData, onProgress);
+    },
+
+    listUsers: function () {
+      return requestJson(API.listUsers).then(function (payload) {
+        return {
+          users: payload.users || [],
+          permissions: payload.permissions || []
+        };
+      });
+    },
+
+    saveUser: function (user) {
+      return requestJson(API.saveUser, {
+        method: "POST",
+        body: JSON.stringify(user || {})
+      }).then(function (payload) {
+        return payload.users || [];
+      });
+    },
+
+    deleteUser: function (id) {
+      return requestJson(API.deleteUser, {
+        method: "POST",
+        body: JSON.stringify({ id: id })
+      }).then(function (payload) {
+        return payload.users || [];
+      });
     },
 
     clone: clone

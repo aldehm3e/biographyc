@@ -141,7 +141,7 @@ window.SHOWCASE_SITE_DATA = {
             {
                 "title": "مرفوعة رايتك",
                 "subtitle": "هوية وطنية وحضور رقمي",
-                "intro": "واجهة تعريفية تجمع السيرة والمشاريع والصفحات في تجربة قابلة للإدارة.",
+                "intro": "",
                 "image": "",
                 "mobileImage": "",
                 "video": "assets/video/SA_Flag.mp4",

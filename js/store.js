@@ -244,6 +244,27 @@
     } catch (error) {}
   }
 
+  function readFileAsDataUrl(file, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onloadstart = function () {
+        if (typeof onProgress === "function") onProgress(10);
+      };
+      reader.onprogress = function (event) {
+        if (!event.lengthComputable || typeof onProgress !== "function") return;
+        onProgress(Math.min(95, Math.round((event.loaded / event.total) * 90)));
+      };
+      reader.onload = function () {
+        if (typeof onProgress === "function") onProgress(100);
+        resolve(reader.result || "");
+      };
+      reader.onerror = function () {
+        reject(new Error("Unable to prepare the selected file for the static showcase."));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   window.SiteStore = {
     load: load,
 
@@ -377,7 +398,17 @@
       var formData = new FormData();
       formData.append("file", file);
       formData.append("type", type || "image");
-      return uploadJson(API.uploadMedia, formData, onProgress);
+      return uploadJson(API.uploadMedia, formData, onProgress).catch(function (error) {
+        if (!IS_SHOWCASE) throw error;
+        return readFileAsDataUrl(file, onProgress).then(function (path) {
+          return {
+            success: true,
+            path: path,
+            name: file && file.name ? file.name : "showcase-upload",
+            type: type || "image"
+          };
+        });
+      });
     },
 
     listUsers: function () {
@@ -385,6 +416,12 @@
         return {
           users: payload.users || [],
           permissions: payload.permissions || []
+        };
+      }).catch(function (error) {
+        if (!IS_SHOWCASE) throw error;
+        return {
+          users: [demoUser()],
+          permissions: ["*"]
         };
       });
     },
@@ -395,6 +432,9 @@
         body: JSON.stringify(user || {})
       }).then(function (payload) {
         return payload.users || [];
+      }).catch(function (error) {
+        if (!IS_SHOWCASE) throw error;
+        return [demoUser()];
       });
     },
 
@@ -404,6 +444,9 @@
         body: JSON.stringify({ id: id })
       }).then(function (payload) {
         return payload.users || [];
+      }).catch(function (error) {
+        if (!IS_SHOWCASE) throw error;
+        return [demoUser()];
       });
     },
 

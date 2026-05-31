@@ -17,6 +17,25 @@
   var adminUsersLoaded = false;
   var MAX_FOOTER_COLUMNS = 3;
   var MAX_FOOTER_ICON_GROUPS = 2;
+  var PAGE_EDITOR_FONTS = [
+    { value: "", label: "الخط", family: "" },
+    { value: "ibm-plex-arabic", label: "IBM Plex Sans Arabic", family: "'IBM Plex Sans Arabic', sans-serif" },
+    { value: "saudi", label: "Saudi", family: "'Saudi', 'IBM Plex Sans Arabic', sans-serif" },
+    { value: "maqroo", label: "Maqroo", family: "'Maqroo', 'IBM Plex Sans Arabic', sans-serif" },
+    { value: "open-dyslexic", label: "OpenDyslexic", family: "'OpenDyslexic', 'IBM Plex Sans Arabic', sans-serif" }
+  ];
+  var PAGE_EDITOR_FONT_SIZES = [
+    { value: "", label: "حجم الخط" },
+    { value: "12px", label: "12" },
+    { value: "14px", label: "14" },
+    { value: "16px", label: "16" },
+    { value: "18px", label: "18" },
+    { value: "20px", label: "20" },
+    { value: "24px", label: "24" },
+    { value: "28px", label: "28" },
+    { value: "32px", label: "32" },
+    { value: "40px", label: "40" }
+  ];
   var ADMIN_PERMISSION_LABELS = {
     settings: "الإعدادات والهوية",
     home: "الرئيسية",
@@ -459,6 +478,77 @@
     return [page.title || "", page.slug || "", page.contentMode || "text", page.image || "", page.video || "", page.content || ""].join("\u001f");
   }
 
+  function currentPageTimestamp() {
+    var date = new Date();
+    var pad = function (value) {
+      return String(value).padStart(2, "0");
+    };
+    return [
+      date.getFullYear(),
+      pad(date.getMonth() + 1),
+      pad(date.getDate())
+    ].join("-") + " " + [
+      pad(date.getHours()),
+      pad(date.getMinutes()),
+      pad(date.getSeconds())
+    ].join(":");
+  }
+
+  function normalizePageTimestampValue(value, fallback) {
+    var text = String(value || "").trim();
+    return text || fallback || currentPageTimestamp();
+  }
+
+  function pageTrackingTimestamp(page) {
+    return String((page && (page.updatedAt || page.updated_at || page.createdAt || page.created_at)) || "").trim();
+  }
+
+  function formatPageTrackingTimestamp(value) {
+    var text = String(value || "").trim();
+    var normalized;
+    var date;
+    if (!text) return "";
+    normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(text) ? text.replace(" ", "T") : text;
+    date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) return text;
+    try {
+      return new Intl.DateTimeFormat(document.documentElement.lang || "ar", {
+        dateStyle: "medium",
+        timeStyle: "short"
+      }).format(date);
+    } catch (error) {
+      return date.toLocaleString();
+    }
+  }
+
+  function pageTrackingLabel(page) {
+    var timestamp = pageTrackingTimestamp(page);
+    return timestamp ? "آخر تحديث: " + formatPageTrackingTimestamp(timestamp) : "";
+  }
+
+  function ensurePageTimestamps(page) {
+    var now = currentPageTimestamp();
+    if (!page) return page;
+    page.createdAt = normalizePageTimestampValue(page.createdAt || page.created_at, now);
+    page.updatedAt = normalizePageTimestampValue(page.updatedAt || page.updated_at, page.createdAt);
+    return page;
+  }
+
+  function pageEditorSignature(page) {
+    return [
+      page.title || "",
+      page.slug || "",
+      page.parentSlug || "",
+      page.visible === false ? "0" : "1",
+      page.showInNavigation === false ? "0" : "1",
+      page.showInFooter === true ? "1" : "0",
+      page.contentMode || "text",
+      page.image || "",
+      page.video || "",
+      page.content || ""
+    ].join("\u001f");
+  }
+
   function projectPublicSignature(project) {
     return [project.title || "", project.slug || "", project.status || "", project.date || "", project.category || "", project.image || "", project.url || "", project.description || ""].join("\u001f");
   }
@@ -565,6 +655,35 @@
       .toLowerCase()
       .replace(/[^\u0600-\u06FFa-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
+  }
+
+  function generatedProjectSlug(index) {
+    var suffix = Date.now();
+    if (Number.isFinite(index)) suffix += "-" + (index + 1);
+    return "project-" + suffix;
+  }
+
+  function isGeneratedProjectSlug(value) {
+    return /^project-\d+(?:-\d+)?$/.test(slugify(value));
+  }
+
+  function projectHasDraftContent(project) {
+    return Boolean(project && (project.title || project.description || project.category || project.status || project.date || project.image || project.url));
+  }
+
+  function ensureUniqueProjectSlugs(projects) {
+    var used = {};
+    (projects || []).forEach(function (project, index) {
+      var seed = slugify(project && (project.slug || project.title)) || generatedProjectSlug(index);
+      var candidate = seed;
+      var suffix = 2;
+      while (used[candidate]) {
+        candidate = seed + "-" + suffix;
+        suffix += 1;
+      }
+      if (project) project.slug = candidate;
+      used[candidate] = true;
+    });
   }
 
   function parseLines(text, mapper) {
@@ -856,25 +975,99 @@
     return "";
   }
 
+  function uploadBrowseButtonHtml(label) {
+    var safeLabel = safeText(label || "Browse Files");
+    return [
+      '<div class="nds-form-action">',
+      '<button type="button" class="nds-btn nds-neutral nds-md nds-browse-btn" data-upload-browse>',
+      '<i class="hgi hgi-stroke hgi-folder-01" aria-hidden="true"></i>',
+      '<span class="nds-label" data-upload-button-label>' + safeLabel + '</span>',
+      '</button>',
+      '</div>'
+    ].join("");
+  }
+
+  function uploadZoneHtml() {
+    return [
+      '<div class="nds-upload-zone" aria-hidden="true">',
+      '<i class="hgi hgi-stroke hgi-file-upload nds-upload-icon" aria-hidden="true"></i>',
+      '<div class="nds-upload-text"><span class="nds-drop-hint">Drag and drop files here to upload</span></div>',
+      '<div class="nds-upload-hint">Maximum file size allowed is 2MB, supported file formats include .jpg, .png, and .pdf.</div>',
+      '</div>'
+    ].join("");
+  }
+
+  function uploadFileItemTemplateHtml() {
+    return [
+      '<div class="nds-file-item-template" style="display: none;">',
+      '<div class="nds-file-item">',
+      '<span class="nds-feedback"><span class="nds-feedback-icon"><i class="nds-icon" aria-hidden="true"></i></span></span>',
+      '<div class="nds-progress-circle" style="--progress-size: 24px; --progress-value: 0;">',
+      '<svg width="24" height="24" viewBox="0 0 24 24">',
+      '<circle class="nds-progress-bg" cx="12" cy="12" r="10" fill="none" stroke-width="3"></circle>',
+      '<circle class="nds-progress-track" cx="12" cy="12" r="10" fill="none" stroke-width="3" stroke-dasharray="62.83" stroke-dashoffset="62.83" stroke-linecap="round"></circle>',
+      '</svg>',
+      '<div class="nds-progress-info"><span class="nds-progress-percentage"><span class="nds-progress-number"></span></span></div>',
+      '</div>',
+      '<div class="nds-file-info"><div class="nds-file-name nds-truncate"></div><div class="nds-file-error"><span class="nds-error-message"></span></div></div>',
+      '<div class="nds-file-actions"><button type="button" class="nds-btn nds-subtle nds-sm nds-icon-only nds-remove-file" aria-label="Remove file"><i class="nds-icon nds-hgi-cancel-01" aria-hidden="true"></i></button></div>',
+      '</div>',
+      '</div>'
+    ].join("");
+  }
+
+  function uploadComponentExtrasHtml() {
+    return [
+      '<div class="nds-file-list"></div>',
+      '<div class="nds-form-footer"></div>',
+      uploadFileItemTemplateHtml()
+    ].join("");
+  }
+
+  function uploadFileControlInnerHtml(inputAttributes, label) {
+    var safeLabel = safeText(label || uploadButtonLabel(""));
+    return [
+      '<div class="nds-form-control upload-file-control" data-upload-label="' + safeLabel + '">',
+      '<input class="nds-file-input file-input" type="file" ' + inputAttributes + '>',
+      uploadZoneHtml(),
+      uploadBrowseButtonHtml(label),
+      '</div>'
+    ].join("");
+  }
+
+  function uploadFileComponentHtml(inputAttributes, label, className) {
+    return [
+      '<div class="nds-form-container nds-file-upload ' + safeText(className || "upload-file-container") + '" data-state="single">',
+      uploadFileControlInnerHtml(inputAttributes, label),
+      uploadComponentExtrasHtml(),
+      '</div>'
+    ].join("");
+  }
+
   function uploadControlHtml(targetField, type) {
     var safeType = safeText(type || "image");
+    var label = uploadButtonLabel(type);
+    var inputAttributes = 'data-media-upload="' + safeType + '" data-upload-target-field="' + safeText(targetField) + '"' + uploadAcceptAttribute(type);
     return [
-      '<div class="nds-form-container upload-inline-control">',
+      '<div class="nds-form-container nds-file-upload upload-inline-control" data-state="single">',
       '<div class="nds-form-header"><label><span class="nds-label">رفع ملف</span></label></div>',
-      '<div class="nds-form-control" data-upload-label="' + safeText(uploadButtonLabel(type)) + '"><input class="nds-input file-input" type="file" data-media-upload="' + safeType + '" data-upload-target-field="' + safeText(targetField) + '"' + uploadAcceptAttribute(type) + '></div>',
+      uploadFileControlInnerHtml(inputAttributes, label),
+      uploadComponentExtrasHtml(),
       '</div>'
     ].join("");
   }
 
   function uploadableInputHtml(key, label, value, type, info) {
     var safeType = safeText(type || "image");
+    var uploadLabel = uploadButtonLabel(type);
+    var inputAttributes = 'data-media-upload="' + safeType + '" data-upload-target-field="' + safeText(key) + '"' + uploadAcceptAttribute(type);
     var placeholder = info ? ' placeholder="' + safeText(info) + '"' : "";
     return [
       '<div class="nds-form-container uploadable-field">',
       '<div class="nds-form-header"><label><span class="nds-label">' + safeText(label) + '</span></label></div>',
       '<div class="uploadable-control-row">',
       '<div class="nds-form-control upload-path-control"><input class="nds-input" data-field="' + safeText(key) + '" type="text" value="' + safeText(value) + '"' + placeholder + '></div>',
-      '<div class="nds-form-control upload-file-control" data-upload-label="' + safeText(uploadButtonLabel(type)) + '"><input class="nds-input file-input" type="file" data-media-upload="' + safeType + '" data-upload-target-field="' + safeText(key) + '"' + uploadAcceptAttribute(type) + '></div>',
+      uploadFileComponentHtml(inputAttributes, uploadLabel, "upload-file-container"),
       '</div>',
       uploadProgressHtml(),
       '</div>'
@@ -893,6 +1086,67 @@
       '<div class="nds-form-container">',
       '<div class="nds-form-header"><label><span class="nds-label">' + safeText(label) + '</span></label></div>',
       '<div class="nds-form-control textarea-control"><textarea class="' + className + '" data-field="' + safeText(key) + '" rows="' + rows + '"' + placeholder + attributes + '>' + safeText(value) + '</textarea></div>',
+      '</div>'
+    ].join("");
+  }
+
+  function pageEditorToolbarHtml() {
+    var fontOptions = PAGE_EDITOR_FONTS.map(function (font) {
+      return '<option value="' + safeText(font.value) + '">' + safeText(font.label) + '</option>';
+    }).join("");
+    var sizeOptions = PAGE_EDITOR_FONT_SIZES.map(function (size) {
+      return '<option value="' + safeText(size.value) + '">' + safeText(size.label) + '</option>';
+    }).join("");
+    return [
+      '<div class="page-format-toolbar" data-page-format-toolbar aria-label="تنسيق محتوى الصفحة">',
+      '<div class="page-format-buttons" role="group" aria-label="تنسيق النص">',
+      '<button class="nds-btn nds-secondary-outline nds-icon-only page-format-btn" type="button" data-page-format="bold" title="غامق" aria-label="غامق">',
+      '<i class="hgi-stroke hgi-text-bold" aria-hidden="true"></i>',
+      '</button>',
+      '<button class="nds-btn nds-secondary-outline nds-icon-only page-format-btn" type="button" data-page-format="italic" title="مائل" aria-label="مائل">',
+      '<i class="hgi-stroke hgi-text-italic" aria-hidden="true"></i>',
+      '</button>',
+      '<button class="nds-btn nds-secondary-outline nds-icon-only page-format-btn" type="button" data-page-format="underline" title="تسطير" aria-label="تسطير">',
+      '<i class="hgi-stroke hgi-text-underline" aria-hidden="true"></i>',
+      '</button>',
+      '</div>',
+      '<div class="page-format-buttons" role="group" aria-label="محاذاة النص">',
+      '<button class="nds-btn nds-secondary-outline nds-icon-only page-format-btn" type="button" data-page-format="right" title="محاذاة لليمين" aria-label="محاذاة لليمين">',
+      '<i class="hgi-stroke hgi-text-align-right" aria-hidden="true"></i>',
+      '</button>',
+      '<button class="nds-btn nds-secondary-outline nds-icon-only page-format-btn" type="button" data-page-format="center" title="توسيط" aria-label="توسيط">',
+      '<i class="hgi-stroke hgi-text-align-center" aria-hidden="true"></i>',
+      '</button>',
+      '<button class="nds-btn nds-secondary-outline nds-icon-only page-format-btn" type="button" data-page-format="left" title="محاذاة لليسار" aria-label="محاذاة لليسار">',
+      '<i class="hgi-stroke hgi-text-align-left" aria-hidden="true"></i>',
+      '</button>',
+      '<button class="nds-btn nds-secondary-outline nds-icon-only page-format-btn" type="button" data-page-format="justify" title="ضبط النص" aria-label="ضبط النص">',
+      '<i class="hgi-stroke hgi-text-align-justify-center" aria-hidden="true"></i>',
+      '</button>',
+      '</div>',
+      '<label class="page-format-select-control page-format-font-control">',
+      '<span class="sr-only">اختيار الخط</span>',
+      '<select class="nds-input page-format-font-select" data-page-format-font aria-label="اختيار الخط">',
+      fontOptions,
+      '</select>',
+      '</label>',
+      '<label class="page-format-select-control page-format-size-control">',
+      '<span class="sr-only">اختيار حجم الخط</span>',
+      '<select class="nds-input page-format-size-select" data-page-format-size aria-label="اختيار حجم الخط">',
+      sizeOptions,
+      '</select>',
+      '</label>',
+      '</div>'
+    ].join("");
+  }
+
+  function pageContentEditorHtml(page) {
+    var info = "اكتب نصا عاديا أو اختر HTML والصق الكود كاملا. سيتم عرضه داخل حاوية منسقة.";
+    return [
+      '<div class="nds-form-container page-content-editor-container">',
+      '<div class="nds-form-header"><label><span class="nds-label">محتوى الصفحة</span></label></div>',
+      pageEditorToolbarHtml(),
+      '<div class="nds-form-control textarea-control"><textarea class="nds-input" data-field="pageContent" rows="10" placeholder="' + safeText(info) + '">' + safeText(page.content) + '</textarea></div>',
       '</div>'
     ].join("");
   }
@@ -1146,15 +1400,18 @@
     var isOpen = pendingOpenEditor.hero === index || openEditorAccordions.has(accordionKey);
     if (isOpen) openEditorAccordions.add(accordionKey);
     return [
-      '<article class="editor-item compact-editor-item admin-template-item nds-card nds-stroke" data-sortable-item="hero" data-editor-accordion-key="' + safeText(accordionKey) + '" data-state="' + (isOpen ? "open" : "closed") + '" data-hero-slide-index="' + index + '">',
-      '<div class="admin-template-header sortable-editor-header">',
+      '<article class="editor-item compact-editor-item admin-template-item nds-accordion nds-md nds-card nds-stroke" data-nds-local-accordion="ready" data-sortable-item="hero" data-editor-accordion-key="' + safeText(accordionKey) + '" data-state="' + (isOpen ? "open" : "closed") + '" data-hero-slide-index="' + index + '">',
+      '<div class="nds-accordion-item">',
+      '<h3 class="admin-template-header sortable-editor-header nds-accordion-header">',
       dragHandleHtml("اسحب لتغيير ترتيب وسائط القسم الرئيسي"),
-      '<button class="editor-accordion-btn nds-accordion-btn nds-btn nds-subtle" type="button" data-editor-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
-      '<span class="nds-card-title">' + safeText(title) + '</span>',
+      '<button class="editor-accordion-btn nds-accordion-btn nds-btn nds-subtle nds-menu-btn" type="button" data-editor-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
+      '<span class="nds-accordion-title nds-card-title">' + safeText(title) + '</span>',
       '</button>',
       adminDeleteButton("data-delete-hero-slide", index, "حذف وسائط القسم الرئيسي"),
-      '</div>',
-      '<div class="admin-template-body" id="' + panelId + '">',
+      '</h3>',
+      '<div class="admin-template-body editor-accordion-collapse nds-accordion-collapse" id="' + panelId + '"' + (isOpen ? ' data-state="open" aria-hidden="false"' : ' aria-hidden="true"') + '>',
+      '<div class="editor-accordion-content nds-accordion-content">',
+      '<div class="compact-editor-body editor-accordion-body nds-accordion-body">',
       '<div class="form-grid">',
       inputHtml("heroSlideTitle", "عنوان الشريحة", slide.title),
       inputHtml("heroSlideSubtitle", "العنوان الفرعي", slide.subtitle),
@@ -1168,6 +1425,9 @@
       '</div>',
       inputHtml("heroAlt", "وصف الصورة اختياري", slide.alt),
       '<label class="check-line"><input type="checkbox" data-hero-slide-visible ' + (slide.visible === false ? "" : "checked") + '> <span>إظهار هذه الوسائط في السلايدر</span></label>',
+      '</div>',
+      '</div>',
+      '</div>',
       '</div>',
       '</article>'
     ].join("");
@@ -1280,6 +1540,11 @@
       var content = document.createElement("div");
       var inner = document.createElement("div");
       var button = document.createElement("button");
+      item.classList.add("nds-accordion", "nds-md");
+      item.setAttribute("data-nds-local-accordion", "ready");
+      card.classList.add("nds-accordion-item");
+      head.classList.add("nds-accordion-header");
+      title.classList.add("nds-accordion-title");
       item.dataset.editorAccordionKey = key;
       item.dataset.state = isOpen ? "open" : "closed";
       body.className = "editor-accordion-collapse nds-accordion-collapse";
@@ -1287,12 +1552,12 @@
       body.dataset.state = isOpen ? "open" : "";
       body.setAttribute("aria-hidden", String(!isOpen));
       content.className = "editor-accordion-content nds-accordion-content";
-      inner.className = "compact-editor-body";
+      inner.className = "compact-editor-body editor-accordion-body nds-accordion-body";
       while (head.nextSibling) inner.appendChild(head.nextSibling);
       content.appendChild(inner);
       body.appendChild(content);
       card.appendChild(body);
-      button.className = "editor-accordion-btn nds-accordion-btn nds-btn nds-subtle";
+      button.className = "editor-accordion-btn nds-accordion-btn nds-btn nds-subtle nds-menu-btn";
       button.type = "button";
       button.dataset.editorToggle = "";
       button.dataset.state = isOpen ? "open" : "";
@@ -1359,14 +1624,15 @@
     var accordionKey = "contact:" + contactId;
     var isOpen = openContactAccordions.has(accordionKey);
     return [
-      '<article class="editor-item contact-editor-item nds-card nds-stroke" data-sortable-item="contacts" data-contact-index="' + index + '" data-contact-id="' + safeText(contactId) + '">',
-      '<div class="contact-accordion-header sortable-editor-header">',
+      '<article class="editor-item contact-editor-item nds-accordion nds-md nds-card nds-stroke" data-nds-local-accordion="ready" data-sortable-item="contacts" data-contact-index="' + index + '" data-contact-id="' + safeText(contactId) + '">',
+      '<div class="nds-accordion-item">',
+      '<h3 class="contact-accordion-header sortable-editor-header nds-accordion-header">',
       dragHandleHtml("تغيير ترتيب وسيلة التواصل"),
-      '<button class="contact-accordion-btn nds-accordion-btn nds-btn nds-subtle" type="button" data-contact-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
-      '<span class="contact-accordion-title">' + safeText(label) + '</span>',
+      '<button class="contact-accordion-btn nds-accordion-btn nds-btn nds-subtle nds-menu-btn" type="button" data-contact-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
+      '<span class="contact-accordion-title nds-accordion-title">' + safeText(label) + '</span>',
       '</button>',
       contactDeleteButton(index),
-      '</div>',
+      '</h3>',
       '<div class="contact-accordion-collapse nds-accordion-collapse" id="' + panelId + '"' + (isOpen ? ' data-state="open" aria-hidden="false"' : ' aria-hidden="true"') + '>',
       '<div class="contact-accordion-content nds-accordion-content">',
       '<div class="contact-accordion-body nds-accordion-body">',
@@ -1377,6 +1643,7 @@
       uploadableInputHtml("contactIconPath", "مسار شعار مخصص اختياري", contact.iconPath, "contact-icon"),
       '</div>',
       '<label class="check-line"><input type="checkbox" data-contact-visible ' + (contact.visible === false ? "" : "checked") + '> <span>إظهار وسيلة التواصل</span></label>',
+      '</div>',
       '</div>',
       '</div>',
       '</div>',
@@ -1402,21 +1669,24 @@
     var accordionKey = "projects:" + projectId;
     var isOpen = openEditorAccordions.has(accordionKey);
     var title = project.title || "مشروع";
+    var projectSlug = slugify(project.slug || project.title) || generatedProjectSlug(index);
+    var titleSlug = slugify(project.title || "");
     return [
-      '<article class="editor-item compact-editor-item admin-template-item nds-card nds-stroke" data-sortable-item="projects" data-editor-accordion-key="' + safeText(accordionKey) + '" data-project-index="' + index + '" data-project-id="' + safeText(projectId) + '" data-state="' + (isOpen ? "open" : "closed") + '">',
-      '<div class="nds-card-content compact-card-content">',
-      '<div class="editor-item-head sortable-editor-header">',
+      '<article class="editor-item compact-editor-item admin-template-item nds-accordion nds-md nds-card nds-stroke" data-nds-local-accordion="ready" data-sortable-item="projects" data-editor-accordion-key="' + safeText(accordionKey) + '" data-project-index="' + index + '" data-project-id="' + safeText(projectId) + '" data-project-title-slug="' + safeText(titleSlug) + '" data-state="' + (isOpen ? "open" : "closed") + '">',
+      '<div class="nds-card-content compact-card-content nds-accordion-item">',
+      '<div class="editor-item-head sortable-editor-header nds-accordion-header">',
       dragHandleHtml("تغيير ترتيب المشروع"),
-      '<button class="editor-accordion-btn nds-accordion-btn nds-btn nds-subtle" type="button" data-editor-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
-      '<span class="nds-card-title">' + safeText(title) + '</span>',
+      '<button class="editor-accordion-btn nds-accordion-btn nds-btn nds-subtle nds-menu-btn" type="button" data-editor-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
+      '<span class="nds-accordion-title nds-card-title">' + safeText(title) + '</span>',
       '</button>',
       adminDeleteButton("data-delete-project", index, "حذف المشروع"),
       '</div>',
       '<div class="editor-accordion-collapse nds-accordion-collapse" id="' + panelId + '"' + (isOpen ? ' data-state="open" aria-hidden="false"' : ' aria-hidden="true"') + '>',
       '<div class="editor-accordion-content nds-accordion-content">',
+      '<div class="compact-editor-body editor-accordion-body nds-accordion-body">',
       '<div class="form-grid">',
       inputHtml("projectTitle", "عنوان المشروع", project.title),
-      inputHtml("projectSlug", "الرابط المختصر", project.slug),
+      inputHtml("projectSlug", "الرابط المختصر", projectSlug),
       inputHtml("projectStatus", "الحالة", project.status),
       inputHtml("projectDate", "التاريخ", project.date),
       inputHtml("projectCategory", "التصنيف", project.category),
@@ -1425,6 +1695,7 @@
       inputHtml("projectUrl", "رابط تصفح المشروع", project.url, "مثال: https://example.com"),
       textareaHtml("projectDescription", "الوصف", project.description, 4),
       '<label class="check-line"><input type="checkbox" data-project-visible ' + (project.visible === false ? "" : "checked") + '> <span>إظهار المشروع</span></label>',
+      '</div>',
       '</div>',
       '</div>',
       '</div>',
@@ -1524,6 +1795,7 @@
     var bySlug = {};
     ensureUniquePageSlugs(pages);
     (pages || []).forEach(function (page) {
+      ensurePageTimestamps(page);
       page.slug = slugify(page.slug || page.title);
       page.parentSlug = slugify(page.parentSlug);
       if (page.slug) bySlug[page.slug] = page;
@@ -1559,21 +1831,27 @@
     var panelId = "page-panel-" + index;
     var accordionKey = "page:" + pageId;
     var title = page.title || "صفحة إضافية";
+    var pageSignature;
+    var trackingLabel;
     var isOpen = pendingOpenEditor.page === index || openEditorAccordions.has(accordionKey);
     if (isOpen) openEditorAccordions.add(accordionKey);
+    ensurePageTimestamps(page);
+    pageSignature = pageEditorSignature(page);
+    trackingLabel = pageTrackingLabel(page);
     var isChild = hasAdminText(page.parentSlug);
     var childEntries = children || [];
     var childCount = childEntries.length;
     var isNavigationGroup = !isChild && childCount > 0;
     var showInNavigation = isChild ? false : (page.showInFooter && page.visible === false ? false : page.showInNavigation !== false);
     return [
-      '<article class="editor-item compact-editor-item admin-template-item nds-card nds-stroke" data-sortable-item="page" data-editor-accordion-key="' + safeText(accordionKey) + '" data-page-index="' + index + '" data-page-id="' + safeText(pageId) + '" data-page-original-slug="' + safeText(slugify(page.slug || page.title)) + '" data-page-is-child="' + (isChild ? "true" : "false") + '" data-page-is-group="' + (isNavigationGroup ? "true" : "false") + '" data-state="' + (isOpen ? "open" : "closed") + '">',
-      '<div class="nds-card-content compact-card-content">',
-      '<div class="editor-item-head sortable-editor-header">',
+      '<article class="editor-item compact-editor-item admin-template-item nds-accordion nds-md nds-card nds-stroke" data-nds-local-accordion="ready" data-sortable-item="page" data-editor-accordion-key="' + safeText(accordionKey) + '" data-page-index="' + index + '" data-page-id="' + safeText(pageId) + '" data-page-original-slug="' + safeText(slugify(page.slug || page.title)) + '" data-page-created-at="' + safeText(page.createdAt) + '" data-page-updated-at="' + safeText(page.updatedAt) + '" data-page-signature="' + safeText(pageSignature) + '" data-page-is-child="' + (isChild ? "true" : "false") + '" data-page-is-group="' + (isNavigationGroup ? "true" : "false") + '" data-state="' + (isOpen ? "open" : "closed") + '">',
+      '<div class="nds-card-content compact-card-content nds-accordion-item">',
+      '<div class="editor-item-head sortable-editor-header nds-accordion-header">',
       dragHandleHtml("اسحب لتغيير ترتيب الصفحات"),
-      '<button class="editor-accordion-btn nds-accordion-btn nds-btn nds-subtle" type="button" data-editor-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
-      '<span class="page-editor-heading">',
+      '<button class="editor-accordion-btn nds-accordion-btn nds-btn nds-subtle nds-menu-btn" type="button" data-editor-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
+      '<span class="page-editor-heading nds-accordion-title">',
       '<span class="nds-card-title">' + safeText(title) + '</span>',
+      trackingLabel ? '<span class="page-editor-timestamp">' + safeText(trackingLabel) + '</span>' : '',
       '<span class="page-editor-meta">',
       '<span class="nds-tag nds-sm" data-status="' + (isChild ? "info" : "neutral") + '"><span class="nds-label">' + (isChild ? "صفحة فرعية" : "صفحة رئيسية") + '</span></span>',
       childCount ? '<span class="nds-tag nds-sm"><span class="nds-label">' + childCount + ' عناصر فرعية</span></span>' : '',
@@ -1586,6 +1864,7 @@
       '</div>',
       '<div class="editor-accordion-collapse nds-accordion-collapse" id="' + panelId + '"' + (isOpen ? ' data-state="open" aria-hidden="false"' : ' aria-hidden="true"') + '>',
       '<div class="editor-accordion-content nds-accordion-content">',
+      '<div class="compact-editor-body editor-accordion-body nds-accordion-body">',
       '<div class="form-grid">',
       inputHtml("pageTitle", "عنوان الصفحة", page.title),
       inputHtml("pageSlug", "الرابط المختصر", page.slug),
@@ -1601,8 +1880,9 @@
       '<label class="check-line"><input type="checkbox" data-page-navigation-link ' + (showInNavigation ? "checked" : "") + '> <span>إظهار في الهيدر</span></label>',
       '<label class="check-line"><input type="checkbox" data-page-footer-link ' + (page.showInFooter ? "checked" : "") + '> <span>رابط تذييل</span></label>',
       '</div>',
-      textareaHtml("pageContent", "محتوى الصفحة", page.content, 10, "اكتب نصا عاديا أو اختر HTML والصق الكود كاملا. سيتم عرضه داخل حاوية منسقة."),
+      pageContentEditorHtml(page),
       isChild ? '' : pageChildrenSectionHtml(page, pageId, childEntries),
+      '</div>',
       '</div>',
       '</div>',
       '</div>',
@@ -1616,10 +1896,10 @@
     var panelId = "page-children-panel-" + pageId;
     var isOpen = openEditorAccordions.has(childrenKey);
     return [
-      '<section class="page-children-section" data-page-children-section data-editor-accordion-key="' + safeText(childrenKey) + '" data-state="' + (isOpen ? "open" : "closed") + '" aria-label="الصفحات الفرعية">',
-      '<div class="page-children-head">',
-      '<button class="nds-btn nds-subtle page-children-toggle" type="button" data-page-children-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + safeText(panelId) + '">',
-      '<i class="nds-icon nds-hgi-arrow-down-01" aria-hidden="true"></i>',
+      '<section class="page-children-section nds-accordion nds-md nds-card nds-stroke" data-nds-local-accordion="ready" data-page-children-section data-editor-accordion-key="' + safeText(childrenKey) + '" data-state="' + (isOpen ? "open" : "closed") + '" aria-label="الصفحات الفرعية">',
+      '<div class="nds-accordion-item">',
+      '<h3 class="page-children-head nds-accordion-header">',
+      '<button class="nds-btn nds-subtle nds-menu-btn nds-accordion-btn page-children-toggle" type="button" data-page-children-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + safeText(panelId) + '">',
       '<span class="page-children-title-row">',
       '<span class="section-minor-title">الصفحات الفرعية</span>',
       '<span class="nds-tag nds-sm"><span class="nds-label">' + children.length + ' صفحة</span></span>',
@@ -1629,11 +1909,14 @@
       '<i class="nds-icon nds-hgi-plus-sign" aria-hidden="true"></i>',
       '<span class="nds-label">إضافة صفحة فرعية</span>',
       '</button>',
-      '</div>',
-      '<div class="page-children-collapse" id="' + safeText(panelId) + '"' + (isOpen ? ' data-state="open" aria-hidden="false"' : ' aria-hidden="true"') + '>',
-      '<div class="page-children-collapse-content">',
+      '</h3>',
+      '<div class="page-children-collapse nds-accordion-collapse" id="' + safeText(panelId) + '"' + (isOpen ? ' data-state="open" aria-hidden="false"' : ' aria-hidden="true"') + '>',
+      '<div class="page-children-collapse-content nds-accordion-content">',
+      '<div class="page-children-body nds-accordion-body">',
       '<div class="editor-list compact-editor-list page-children-list" data-sortable-list="pages">',
       children.length ? children.map(function (entry) { return pageTemplate(entry.page, entry.index, []); }).join("") : '<div class="page-children-empty">لا توجد صفحات فرعية لهذه الصفحة.</div>',
+      '</div>',
+      '</div>',
       '</div>',
       '</div>',
       '</div>',
@@ -1691,6 +1974,96 @@
 
   function syncPageContentEditorModes(root) {
     qsa("[data-page-index]", root || document).forEach(syncPageContentEditorMode);
+  }
+
+  function setPageContentMode(pageItem, mode) {
+    var normalized = mode === "html" ? "html" : "text";
+    var input = pageItem ? qs('[data-field="pageContentMode"]', pageItem) : null;
+    var menu = input ? input.closest("[data-option-menu]") : null;
+    var selected = getOption(normalized, window.PAGE_CONTENT_MODES || []);
+    var label = menu ? qs("[data-option-label]", menu) : null;
+    var trigger = menu ? qs("[data-option-trigger]", menu) : null;
+    var existingIcon = trigger ? qs(".admin-option-icon", trigger) : null;
+    if (input) input.value = normalized;
+    if (label) label.textContent = selected.label;
+    if (existingIcon) existingIcon.outerHTML = adminOptionIcon(selected.value);
+    if (menu) {
+      qsa("[data-option-value]", menu).forEach(function (item) {
+        item.dataset.state = item.dataset.optionValue === normalized ? "selected" : "";
+      });
+    }
+    if (input) {
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    syncPageContentEditorMode(pageItem);
+  }
+
+  function replacePageEditorSelection(editor, before, after) {
+    var start = typeof editor.selectionStart === "number" ? editor.selectionStart : editor.value.length;
+    var end = typeof editor.selectionEnd === "number" ? editor.selectionEnd : start;
+    var selected = editor.value.slice(start, end);
+    editor.value = editor.value.slice(0, start) + before + selected + after + editor.value.slice(end);
+    editor.focus();
+    if (selected) {
+      editor.setSelectionRange(start, start + before.length + selected.length + after.length);
+    } else {
+      editor.setSelectionRange(start + before.length, start + before.length);
+    }
+    editor.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function applyPageTextFormat(button) {
+    var pageItem = button ? button.closest("[data-page-index]") : null;
+    var editor = pageItem ? qs('[data-field="pageContent"]', pageItem) : null;
+    var action = button ? button.dataset.pageFormat : "";
+    var alignmentMap = {
+      right: "right",
+      center: "center",
+      left: "left",
+      justify: "justify"
+    };
+    if (!editor) return;
+    setPageContentMode(pageItem, "html");
+    if (action === "bold") {
+      replacePageEditorSelection(editor, "<strong>", "</strong>");
+      return;
+    }
+    if (action === "italic") {
+      replacePageEditorSelection(editor, "<em>", "</em>");
+      return;
+    }
+    if (action === "underline") {
+      replacePageEditorSelection(editor, '<span style="text-decoration: underline;">', "</span>");
+      return;
+    }
+    if (alignmentMap[action]) {
+      replacePageEditorSelection(editor, '<div style="text-align: ' + alignmentMap[action] + ';">', "</div>");
+    }
+  }
+
+  function applyPageEditorFont(select) {
+    var pageItem = select ? select.closest("[data-page-index]") : null;
+    var editor = pageItem ? qs('[data-field="pageContent"]', pageItem) : null;
+    var selected = PAGE_EDITOR_FONTS.find(function (font) {
+      return font.value === (select ? select.value : "");
+    });
+    if (!editor || !selected || !selected.family) return;
+    setPageContentMode(pageItem, "html");
+    replacePageEditorSelection(editor, '<span style="font-family: ' + selected.family + ';">', "</span>");
+    select.value = "";
+  }
+
+  function applyPageEditorFontSize(select) {
+    var pageItem = select ? select.closest("[data-page-index]") : null;
+    var editor = pageItem ? qs('[data-field="pageContent"]', pageItem) : null;
+    var selected = PAGE_EDITOR_FONT_SIZES.find(function (size) {
+      return size.value === (select ? select.value : "");
+    });
+    if (!editor || !selected || !selected.value) return;
+    setPageContentMode(pageItem, "html");
+    replacePageEditorSelection(editor, '<span style="font-size: ' + selected.value + ';">', "</span>");
+    select.value = "";
   }
 
   function iconTypeDropmenuHtml(key, label, value) {
@@ -1840,9 +2213,7 @@
   function contactDeleteButton(index) {
     return [
       '<button class="contact-delete-btn nds-btn nds-subtle nds-destructive nds-icon-only" type="button" data-delete-contact="' + index + '" aria-label="حذف وسيلة التواصل" title="حذف">',
-      '<svg class="contact-delete-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">',
-      '<path d="M9 4h6l.8 2H20v2H4V6h4.2L9 4Zm-2 6h10l-.6 9.2c-.1 1-1 1.8-2 1.8H9.6c-1 0-1.9-.8-2-1.8L7 10Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/>',
-      '</svg>',
+      '<i class="contact-delete-icon hgi hgi-stroke hgi-delete-02" aria-hidden="true"></i>',
       '<span class="nds-label sr-only">حذف</span>',
       '</button>'
     ].join("");
@@ -1851,9 +2222,7 @@
   function adminDeleteButton(attributeName, index, label) {
     return [
       '<button class="contact-delete-btn admin-template-delete nds-btn nds-subtle nds-destructive nds-icon-only" type="button" ' + attributeName + '="' + index + '" aria-label="' + safeText(label || "حذف") + '" title="' + safeText(label || "حذف") + '">',
-      '<svg class="contact-delete-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">',
-      '<path d="M9 4h6l.8 2H20v2H4V6h4.2L9 4Zm-2 6h10l-.6 9.2c-.1 1-1 1.8-2 1.8H9.6c-1 0-1.9-.8-2-1.8L7 10Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/>',
-      '</svg>',
+      '<i class="contact-delete-icon hgi hgi-stroke hgi-delete-02" aria-hidden="true"></i>',
       '<span class="nds-label sr-only">' + safeText(label || "حذف") + '</span>',
       '</button>'
     ].join("");
@@ -1862,10 +2231,12 @@
   function collectProjects(options) {
     var keepDrafts = options && options.keepDrafts;
     data.projects = qsa("[data-project-index]").map(function (item) {
+      var title = qs('[data-field="projectTitle"]', item).value.trim();
+      var slugInput = qs('[data-field="projectSlug"]', item);
       return {
         id: item.dataset.projectId || newEntityId("project"),
-        title: qs('[data-field="projectTitle"]', item).value.trim(),
-        slug: slugify(qs('[data-field="projectSlug"]', item).value.trim() || qs('[data-field="projectTitle"]', item).value.trim()),
+        title: title,
+        slug: slugify((slugInput ? slugInput.value : "") || title || generatedProjectSlug(Number(item.dataset.projectIndex))),
         status: qs('[data-field="projectStatus"]', item).value.trim(),
         date: qs('[data-field="projectDate"]', item).value.trim(),
         category: qs('[data-field="projectCategory"]', item).value.trim(),
@@ -1875,8 +2246,30 @@
         visible: qs("[data-project-visible]", item).checked
       };
     }).filter(function (project) {
-      return keepDrafts || project.title || project.description || project.category || project.status || project.date || project.image || project.url;
+      return keepDrafts || projectHasDraftContent(project);
     });
+    ensureUniqueProjectSlugs(data.projects);
+  }
+
+  function syncProjectSlugFromTitle(input) {
+    var item = input ? input.closest("[data-project-index]") : null;
+    var slugInput = item ? qs('[data-field="projectSlug"]', item) : null;
+    if (!slugInput) return;
+
+    var nextTitleSlug = slugify(input.value);
+    var previousTitleSlug = slugify(item.dataset.projectTitleSlug || "");
+    var currentSlug = slugify(slugInput.value);
+    if (!currentSlug || currentSlug === previousTitleSlug || isGeneratedProjectSlug(currentSlug)) {
+      slugInput.value = nextTitleSlug || currentSlug || generatedProjectSlug(Number(item.dataset.projectIndex));
+      item.dataset.projectTitleSlug = nextTitleSlug;
+    }
+  }
+
+  function normalizeProjectSlugInput(input) {
+    var item;
+    if (!input) return;
+    item = input.closest("[data-project-index]");
+    input.value = slugify(input.value) || generatedProjectSlug(Number(item && item.dataset.projectIndex));
   }
 
   function collectContacts() {
@@ -2226,7 +2619,9 @@
       var slug = qs('[data-field="pageSlug"]', item).value.trim() || slugify(title);
       var parentSlug = slugify((qs('[data-field="pageParentSlug"]', item) || {}).value || "");
       var navigationInput = qs("[data-page-navigation-link]", item);
-      return {
+      var createdAt = normalizePageTimestampValue(item.dataset.pageCreatedAt);
+      var updatedAt = normalizePageTimestampValue(item.dataset.pageUpdatedAt, createdAt);
+      var page = {
         id: item.dataset.pageId || newEntityId("page"),
         originalSlug: item.dataset.pageOriginalSlug || "",
         title: title,
@@ -2238,8 +2633,14 @@
         contentMode: qs('[data-field="pageContentMode"]', item).value || "text",
         image: (qs('[data-field="pageImage"]', item) || {}).value || "",
         video: (qs('[data-field="pageVideo"]', item) || {}).value || "",
-        content: qs('[data-field="pageContent"]', item).value.trim()
+        content: qs('[data-field="pageContent"]', item).value.trim(),
+        createdAt: createdAt,
+        updatedAt: updatedAt
       };
+      if (pageEditorSignature(page) !== (item.dataset.pageSignature || "")) {
+        page.updatedAt = currentPageTimestamp();
+      }
+      return page;
     }).filter(function (page) {
       return page.title || page.slug || page.content || page.image || page.video;
     });
@@ -2251,6 +2652,7 @@
       delete page.originalSlug;
     });
     data.pages = normalizePageParentLinks(data.pages);
+    data.pages.forEach(ensurePageTimestamps);
   }
 
   function addSubpageForParent(parentPageId) {
@@ -2284,6 +2686,7 @@
     }
     parent.parentSlug = "";
     parent.showInNavigation = parent.showInNavigation !== false;
+    parent.updatedAt = currentPageTimestamp();
     child = {
       id: newEntityId("page"),
       title: "صفحة فرعية جديدة",
@@ -2295,7 +2698,9 @@
       video: "",
       visible: true,
       showInNavigation: false,
-      showInFooter: false
+      showInFooter: false,
+      createdAt: parent.updatedAt,
+      updatedAt: parent.updatedAt
     };
     data.pages.push(child);
     data.pages = normalizePageParentLinks(data.pages);
@@ -2334,6 +2739,7 @@
     var index;
     var page;
     var pageSlug;
+    var deletedParentSlug;
     var childCount;
     if (!pageId) return;
     captureOpenEditorAccordions(qs("[data-pages-editor]"));
@@ -2344,6 +2750,7 @@
     if (index < 0) return;
     page = data.pages[index];
     pageSlug = slugify(page.slug || page.title);
+    deletedParentSlug = slugify(page.parentSlug);
     childCount = (data.pages || []).filter(function (candidate) {
       return slugify(candidate.parentSlug) === pageSlug;
     }).length;
@@ -2351,7 +2758,15 @@
       data.pages.splice(index, 1);
       if (pageSlug) {
         data.pages.forEach(function (candidate) {
-          if (slugify(candidate.parentSlug) === pageSlug) candidate.parentSlug = "";
+          if (slugify(candidate.parentSlug) === pageSlug) {
+            candidate.parentSlug = "";
+            candidate.updatedAt = currentPageTimestamp();
+          }
+        });
+      }
+      if (deletedParentSlug) {
+        data.pages.forEach(function (candidate) {
+          if (slugify(candidate.slug) === deletedParentSlug) candidate.updatedAt = currentPageTimestamp();
         });
       }
       openEditorAccordions.delete("page:" + pageId);
@@ -2373,17 +2788,18 @@
     var accordionKey = "integrations:" + integrationId;
     var isOpen = openEditorAccordions.has(accordionKey);
     return [
-      '<article class="editor-item compact-editor-item admin-template-item nds-card nds-stroke" data-sortable-item="integrations" data-editor-accordion-key="' + safeText(accordionKey) + '" data-integration-index="' + index + '" data-integration-id="' + safeText(integrationId) + '" data-state="' + (isOpen ? "open" : "closed") + '">',
-      '<div class="nds-card-content compact-card-content">',
-      '<div class="editor-item-head sortable-editor-header">',
+      '<article class="editor-item compact-editor-item admin-template-item nds-accordion nds-md nds-card nds-stroke" data-nds-local-accordion="ready" data-sortable-item="integrations" data-editor-accordion-key="' + safeText(accordionKey) + '" data-integration-index="' + index + '" data-integration-id="' + safeText(integrationId) + '" data-state="' + (isOpen ? "open" : "closed") + '">',
+      '<div class="nds-card-content compact-card-content nds-accordion-item">',
+      '<div class="editor-item-head sortable-editor-header nds-accordion-header">',
       dragHandleHtml("تغيير ترتيب التكامل"),
-      '<button class="editor-accordion-btn nds-accordion-btn nds-btn nds-subtle" type="button" data-editor-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
-      '<span class="nds-card-title">' + safeText(integrationLabel(integration)) + '</span>',
+      '<button class="editor-accordion-btn nds-accordion-btn nds-btn nds-subtle nds-menu-btn" type="button" data-editor-toggle data-state="' + (isOpen ? "open" : "") + '" aria-expanded="' + (isOpen ? "true" : "false") + '" aria-controls="' + panelId + '">',
+      '<span class="nds-accordion-title nds-card-title">' + safeText(integrationLabel(integration)) + '</span>',
       '</button>',
       adminDeleteButton("data-delete-integration", index, "حذف التكامل"),
       '</div>',
       '<div class="editor-accordion-collapse nds-accordion-collapse" id="' + panelId + '"' + (isOpen ? ' data-state="open" aria-hidden="false"' : ' aria-hidden="true"') + '>',
       '<div class="editor-accordion-content nds-accordion-content">',
+      '<div class="compact-editor-body editor-accordion-body nds-accordion-body">',
       '<div class="form-grid">',
       selectHtml("integrationType", "نوع التكامل", integration.type || "payment", window.INTEGRATION_TYPES || []),
       inputHtml("integrationName", "اسم التكامل", integration.name),
@@ -2396,6 +2812,7 @@
       '</div>',
       textareaHtml("integrationConfigJson", "إعدادات عامة JSON", integration.configJson, 4, "استخدمها للإعدادات العامة فقط"),
       '<label class="check-line"><input type="checkbox" data-integration-enabled ' + (integration.enabled === false ? "" : "checked") + '> <span>تفعيل التكامل</span></label>',
+      '</div>',
       '</div>',
       '</div>',
       '</div>',
@@ -2476,14 +2893,14 @@
     var isSelf = Number(user.id || 0) === Number(currentUser.id || 0);
     var activeInputId = "admin-user-active-" + safeText(user.id || "new-" + index);
     return [
-      '<article class="editor-item admin-user-item nds-accordion nds-card nds-stroke admin-user-accordion" data-admin-user-index="' + index + '" data-admin-user-id="' + safeText(user.id || "") + '">',
+      '<article class="editor-item admin-user-item nds-accordion nds-md nds-card nds-stroke admin-user-accordion" data-admin-user-index="' + index + '" data-admin-user-id="' + safeText(user.id || "") + '">',
       '<div class="nds-accordion-item">',
       '<h3 class="nds-accordion-header admin-user-accordion-header">',
-      '<button class="nds-accordion-btn nds-btn nds-subtle" type="button" aria-expanded="false" aria-controls="' + panelId + '">',
+      '<button class="nds-accordion-btn nds-btn nds-subtle nds-menu-btn" type="button" aria-expanded="false" aria-controls="' + panelId + '">',
       '<span class="nds-accordion-title">' + safeText(userTitle(user)) + '</span>',
       '<span class="nds-tag nds-xs" data-status="' + (user.active === false ? "warning" : "success") + '"><span class="nds-label">' + safeText(roleLabel(user.role || "employee")) + '</span></span>',
       '</button>',
-      isSelf ? '' : '<button class="contact-delete-btn admin-user-delete-btn nds-btn nds-subtle nds-destructive nds-icon-only" type="button" data-delete-admin-user="' + safeText(user.id || "") + '" aria-label="حذف الموظف" title="حذف الموظف"><svg class="contact-delete-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4h6l.8 2H20v2H4V6h4.2L9 4Zm-2 6h10l-.6 9.2c-.1 1-1 1.8-2 1.8H9.6c-1 0-1.9-.8-2-1.8L7 10Zm3 2v7h2v-7h-2Zm4 0v7h2v-7h-2Z"/></svg><span class="nds-label sr-only">حذف الموظف</span></button>',
+      isSelf ? '' : '<button class="contact-delete-btn admin-user-delete-btn nds-btn nds-subtle nds-destructive nds-icon-only" type="button" data-delete-admin-user="' + safeText(user.id || "") + '" aria-label="حذف الموظف" title="حذف الموظف"><i class="contact-delete-icon hgi hgi-stroke hgi-delete-02" aria-hidden="true"></i><span class="nds-label sr-only">حذف الموظف</span></button>',
       '</h3>',
       '<div class="nds-accordion-collapse" id="' + panelId + '">',
       '<div class="nds-accordion-content">',
@@ -2735,8 +3152,8 @@
     }
 
     if (root.dataset.sortableList === "projects") {
-      collectProjects();
-      saveData();
+      collectProjects({ keepDrafts: true });
+      if (data.projects.some(projectHasDraftContent)) saveData();
       renderProjectsEditor();
       refreshPublicShell();
       toast("تم تحديث ترتيب المشاريع");
@@ -2907,8 +3324,91 @@
     return progress;
   }
 
+  function ensureUploadContainer(input) {
+    var control = uploadControl(input);
+    var uploadContainer = input ? input.closest(".nds-file-upload") : null;
+    if (!uploadContainer && control && control.parentNode) {
+      uploadContainer = document.createElement("div");
+      uploadContainer.className = "nds-form-container nds-file-upload upload-file-container";
+      control.parentNode.insertBefore(uploadContainer, control);
+      uploadContainer.appendChild(control);
+    }
+    if (uploadContainer) {
+      uploadContainer.setAttribute("data-state", "single");
+      if (!qs(":scope > .nds-file-list", uploadContainer)) {
+        uploadContainer.insertAdjacentHTML("beforeend", uploadComponentExtrasHtml());
+      }
+    }
+    return uploadContainer;
+  }
+
+  function uploadInstanceForInput(input) {
+    var uploadContainer = ensureUploadContainer(input);
+    var instance = null;
+    if (!uploadContainer || !window.NDS || !window.NDS.Upload) return null;
+    instance = window.NDS.Upload.getInstance(uploadContainer) || window.NDS.Upload.create(uploadContainer);
+    if (instance && instance._fileInput && instance._onFileChange && !instance._adminFileChangeDetached) {
+      instance._fileInput.removeEventListener("change", instance._onFileChange);
+      instance._adminFileChangeDetached = true;
+    }
+    return instance;
+  }
+
+  function createNdsUploadProgress(input) {
+    var file = input.files && input.files[0];
+    var instance = uploadInstanceForInput(input);
+    var fileId;
+    if (!instance || !file) return null;
+    instance.clearAllFiles();
+    fileId = instance.addFile(file, { status: "uploading", progress: 0, error: null });
+    if (!fileId) return null;
+    instance.setFileProgress(fileId, 0);
+    return { ndsUpload: instance, fileId: fileId };
+  }
+
+  function clearUploadFileList(fileList) {
+    if (!fileList) return;
+    while (fileList.firstChild) fileList.removeChild(fileList.firstChild);
+  }
+
+  function ensureUploadFileItemProgress(input) {
+    var uploadContainer = ensureUploadContainer(input);
+    var fileList = uploadContainer ? qs(":scope > .nds-file-list", uploadContainer) : null;
+    var template = uploadContainer ? qs(":scope > .nds-file-item-template .nds-file-item", uploadContainer) : null;
+    var file = input.files && input.files[0];
+    var item;
+    if (!fileList || !template) return null;
+    clearUploadFileList(fileList);
+    item = template.cloneNode(true);
+    item.hidden = false;
+    item.dataset.uploadProgress = "";
+    item.dataset.state = "uploading";
+    item.removeAttribute("data-status");
+    if (file) item.dataset.fileName = file.name;
+    var fileName = qs(".nds-file-name", item);
+    var fileError = qs(".nds-error-message", item);
+    var removeButton = qs(".nds-remove-file", item);
+    var circle = qs(".nds-progress-circle", item);
+    var feedback = qs(".nds-feedback", item);
+    if (fileName) fileName.textContent = file ? file.name : defaultUploadLabel(input);
+    if (fileError) fileError.textContent = "";
+    if (removeButton) removeButton.hidden = true;
+    if (feedback) feedback.removeAttribute("data-status");
+    if (circle) {
+      circle.dataset.value = "0";
+      circle.style.setProperty("--progress-value", "0");
+      circle.removeAttribute("data-status");
+    }
+    fileList.appendChild(item);
+    return item;
+  }
+
   function ensureUploadProgress(input) {
-    var root = input.closest(".uploadable-field, .nds-form-container, .editor-item, form") || input.parentElement;
+    var ndsUploadProgress = createNdsUploadProgress(input);
+    if (ndsUploadProgress) return ndsUploadProgress;
+    var fileItemProgress = ensureUploadFileItemProgress(input);
+    if (fileItemProgress) return fileItemProgress;
+    var root = input.closest(".uploadable-field") || input.closest(".nds-file-upload") || input.closest(".nds-form-container, .editor-item, form") || input.parentElement;
     var progress = root ? qs("[data-upload-progress]", root) : null;
     if (!progress) {
       progress = createUploadProgress();
@@ -2920,6 +3420,45 @@
   function setUploadProgress(progress, value, status, label, message) {
     if (!progress) return;
     var nextValue = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    if (progress.ndsUpload && progress.fileId) {
+      if (status === "success") {
+        progress.ndsUpload.setFileProgress(progress.fileId, 100);
+        progress.ndsUpload.setFileStatus(progress.fileId, "complete", { progress: 100 });
+      } else if (status === "error") {
+        progress.ndsUpload.setFileStatus(progress.fileId, "error", { progress: nextValue, error: message || label || "" });
+      } else {
+        progress.ndsUpload.setFileProgress(progress.fileId, nextValue);
+      }
+      return;
+    }
+    if (progress.classList.contains("nds-file-item")) {
+      var circle = qs(".nds-progress-circle", progress);
+      var feedbackNode = qs(".nds-feedback", progress);
+      var fileError = qs(".nds-error-message", progress);
+      progress.hidden = false;
+      if (circle) {
+        circle.dataset.value = String(nextValue);
+        circle.style.setProperty("--progress-value", String(nextValue));
+        if (window.NDS && window.NDS.Progress && window.NDS.Progress.setValue) {
+          window.NDS.Progress.setValue(circle, nextValue);
+        }
+      }
+      if (fileError) fileError.textContent = status === "error" ? (message || "") : "";
+      if (status === "success") {
+        progress.removeAttribute("data-state");
+        progress.dataset.status = "success";
+        if (feedbackNode) feedbackNode.dataset.status = "success";
+      } else if (status === "error") {
+        progress.removeAttribute("data-state");
+        progress.dataset.status = "error";
+        if (feedbackNode) feedbackNode.dataset.status = "error";
+      } else {
+        progress.removeAttribute("data-status");
+        if (feedbackNode) feedbackNode.removeAttribute("data-status");
+        progress.dataset.state = nextValue >= 100 ? "processing" : "uploading";
+      }
+      return;
+    }
     var feedback = qs(".nds-feedback", progress);
     progress.hidden = false;
     progress.dataset.value = String(nextValue);
@@ -2943,6 +3482,16 @@
   function hideUploadProgress(progress) {
     if (!progress) return;
     window.setTimeout(function () {
+      if (progress.ndsUpload) {
+        progress.ndsUpload.clearAllFiles();
+        return;
+      }
+      if (progress.classList.contains("nds-file-item")) {
+        var list = progress.parentElement;
+        progress.remove();
+        if (list && !list.children.length) list.removeAttribute("data-status");
+        return;
+      }
       progress.hidden = true;
       progress.dataset.value = "0";
       progress.style.setProperty("--progress-value", "0");
@@ -2964,19 +3513,42 @@
     return uploadButtonLabel(input.dataset.mediaUpload || "");
   }
 
+  function ensureUploadBrowseButton(input) {
+    var control = uploadControl(input);
+    if (!control || qs("[data-upload-browse]", control)) return;
+    var label = control.dataset.uploadLabel || defaultUploadLabel(input);
+    if (input.classList) {
+      input.classList.add("nds-file-input");
+      input.classList.remove("nds-input");
+    }
+    if (!qs(".nds-upload-zone", control)) {
+      input.insertAdjacentHTML("afterend", uploadZoneHtml());
+    }
+    (qs(".nds-upload-zone", control) || input).insertAdjacentHTML("afterend", uploadBrowseButtonHtml(label));
+  }
+
   function setUploadControlState(input, status, label) {
     var control = uploadControl(input);
     if (!control) return;
     if (!control.dataset.defaultUploadLabel) {
       control.dataset.defaultUploadLabel = control.dataset.uploadLabel || defaultUploadLabel(input);
     }
-    control.dataset.uploadLabel = label || control.dataset.defaultUploadLabel;
+    control.dataset.uploadLabel = control.dataset.defaultUploadLabel;
+    control.dataset.uploadStatusLabel = label || control.dataset.defaultUploadLabel;
     if (status) {
       control.dataset.uploadStatus = status;
     } else {
       control.removeAttribute("data-upload-status");
+      control.removeAttribute("data-upload-status-label");
     }
     if (!input.getAttribute("aria-label")) input.setAttribute("aria-label", control.dataset.defaultUploadLabel);
+    var buttonLabel = qs("[data-upload-button-label]", control);
+    if (buttonLabel) buttonLabel.textContent = control.dataset.defaultUploadLabel;
+    var browseButton = qs("[data-upload-browse]", control);
+    if (browseButton) {
+      browseButton.disabled = input.disabled;
+      browseButton.setAttribute("aria-disabled", input.disabled ? "true" : "false");
+    }
   }
 
   function resetUploadControlState(input, delay) {
@@ -2987,11 +3559,24 @@
 
   function prepareUploadControls(root) {
     qsa(".nds-form-control > .file-input", root || document).forEach(function (input) {
+      ensureUploadContainer(input);
+      ensureUploadBrowseButton(input);
+      uploadInstanceForInput(input);
       setUploadControlState(input, "", defaultUploadLabel(input));
     });
   }
 
   function setupUploadEvents() {
+    document.addEventListener("click", function (event) {
+      var browseButton = event.target.closest("[data-upload-browse]");
+      if (!browseButton) return;
+      var control = browseButton.closest(".nds-form-control");
+      var input = control ? qs(".file-input", control) : null;
+      if (!input || input.disabled || browseButton.disabled) return;
+      event.preventDefault();
+      input.click();
+    });
+
     document.addEventListener("change", function (event) {
       var pickedInput = event.target.closest(".file-input");
       if (pickedInput) {
@@ -3031,6 +3616,7 @@
       }).finally(function () {
         input.disabled = false;
         input.value = "";
+        setUploadControlState(input, uploadSucceeded ? "success" : "error", uploadControl(input) && uploadControl(input).dataset.uploadLabel);
         resetUploadControlState(input, uploadSucceeded ? 1600 : 2600);
       });
     });
@@ -3051,6 +3637,18 @@
     });
     setupUploadEvents();
 
+    document.addEventListener("input", function (event) {
+      if (event.target.matches('[data-field="projectTitle"]')) {
+        syncProjectSlugFromTitle(event.target);
+      }
+    });
+
+    document.addEventListener("focusout", function (event) {
+      if (event.target.matches('[data-field="projectSlug"]')) {
+        normalizeProjectSlugInput(event.target);
+      }
+    });
+
     qs("[data-add-hero-slide]").addEventListener("click", function () {
       data.home.heroSlides = collectHeroSlides({ keepDrafts: true });
       data.home.heroSlides.unshift({ title: "", subtitle: "", intro: "", image: "", mobileImage: "", video: "", mobileVideo: "", alt: "", visible: true });
@@ -3060,7 +3658,7 @@
 
     qs("[data-add-project]").addEventListener("click", function () {
       collectProjects({ keepDrafts: true });
-      data.projects.push({ id: newEntityId("project"), title: "", slug: "", description: "", status: "", date: "", category: "", image: "", url: "", visible: true });
+      data.projects.push({ id: newEntityId("project"), title: "", slug: generatedProjectSlug(data.projects.length), description: "", status: "", date: "", category: "", image: "", url: "", visible: true });
       renderProjectsEditor();
     });
 
@@ -3134,8 +3732,10 @@
 
     qs("[data-add-page]").addEventListener("click", function () {
       var page;
+      var now;
       collectPages();
-      page = { id: newEntityId("page"), title: "صفحة جديدة", slug: "page-" + Date.now(), parentSlug: "", content: "", contentMode: "text", image: "", video: "", visible: true, showInNavigation: true, showInFooter: false };
+      now = currentPageTimestamp();
+      page = { id: newEntityId("page"), title: "صفحة جديدة", slug: "page-" + Date.now(), parentSlug: "", content: "", contentMode: "text", image: "", video: "", visible: true, showInNavigation: true, showInFooter: false, createdAt: now, updatedAt: now };
       data.pages.unshift(page);
       pendingOpenEditor.page = 0;
       renderPagesEditor();
@@ -3189,6 +3789,7 @@
       var deleteSkill = event.target.closest("[data-delete-skill]");
       var addSubpage = event.target.closest("[data-add-subpage]");
       var pageChildrenToggle = event.target.closest("[data-page-children-toggle]");
+      var pageFormatButton = event.target.closest("[data-page-format]");
       var contactToggle = event.target.closest("[data-contact-toggle]");
       var editorToggle = event.target.closest("[data-editor-toggle]");
       var iconTypeTrigger = event.target.closest("[data-icon-type-trigger]");
@@ -3208,6 +3809,7 @@
       if (deleteAdminUserButton) { deleteAdminUser(deleteAdminUserButton); return; }
       if (addSubpage) { addSubpageForParent(addSubpage.dataset.addSubpage || ""); return; }
       if (pageChildrenToggle) { togglePageChildrenSection(pageChildrenToggle); return; }
+      if (pageFormatButton) { applyPageTextFormat(pageFormatButton); return; }
       if (!event.target.closest("[data-icon-type-menu], [data-option-menu], [data-select-menu]")) closeAdminInlineDropmenus();
       if (contactToggle) { toggleContactPanel(contactToggle); return; }
       if (editorToggle) { toggleEditorPanel(editorToggle); return; }
@@ -3338,9 +3940,12 @@
       }
       if (deleteProject) {
         confirmAdminDeleteThen("هل تريد حذف المشروع؟", function () {
-          collectProjects();
-          data.projects.splice(Number(deleteProject.dataset.deleteProject), 1);
-          saveData();
+          var projectItem = deleteProject.closest("[data-project-index]");
+          var projectIndex = getSortableItemIndex(projectItem);
+          var removedProject;
+          collectProjects({ keepDrafts: true });
+          if (projectIndex > -1) removedProject = data.projects.splice(projectIndex, 1)[0];
+          if (projectHasDraftContent(removedProject)) saveData();
           renderProjectsEditor();
           toast("تم حذف المشروع");
         });
@@ -3386,6 +3991,14 @@
     });
 
     document.addEventListener("change", function (event) {
+      if (event.target.matches("[data-page-format-font]")) {
+        applyPageEditorFont(event.target);
+        return;
+      }
+      if (event.target.matches("[data-page-format-size]")) {
+        applyPageEditorFontSize(event.target);
+        return;
+      }
       if (!event.target.matches("[data-page-visible], [data-page-navigation-link], [data-page-footer-link]")) return;
       var pageItem = event.target.closest("[data-page-index]");
       if (pageItem && event.target.matches("[data-page-navigation-link], [data-page-footer-link]") && event.target.checked) {

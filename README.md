@@ -4,21 +4,9 @@ Author: Eng. Abdulrahman alsaedi
 
 Biography CMS is an Arabic-first personal website and lightweight content management system. It follows the local NDS vanilla design references and uses HTML, CSS, and JavaScript for the public interface, with PHP 8+ and MySQL/MariaDB for saved content, login, uploads, and installation.
 
+This branch is also prepared as the public showcase build. It loads `js/showcase-data.js` on the HTML pages so visitors can explore the current content and open `admin.html` with the demo account from `SHOWCASE.md`.
+
 This file is the main project handoff. Read it before changing code.
-
-## GitHub Pages Showcase
-
-This repository is prepared as a static showcase for GitHub Pages. The public pages load `js/showcase-data.js`, which contains the current Laragon demo content and points to the committed files in `uploads/`.
-
-Demo admin access for exploration:
-
-```text
-Email: admin@admin.com
-Password: 1234
-CAPTCHA answer: 4
-```
-
-On GitHub Pages, admin edits are saved in the visitor browser only. For a real hosted website on Hostinger or another PHP host, use the installer and database guide below.
 
 ## Current Shape
 

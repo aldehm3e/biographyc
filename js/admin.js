@@ -6476,7 +6476,9 @@
 
   function showDashboard(show) {
     var dashboard = qs("[data-admin-dashboard]");
+    var loginRequired = qs("[data-admin-login-required]");
     if (dashboard) dashboard.hidden = !show;
+    if (loginRequired) loginRequired.hidden = show;
   }
 
   function headToDashboard() {

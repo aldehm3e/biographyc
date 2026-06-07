@@ -170,7 +170,7 @@ function install_cms(string $schemaPath, string $configPath, string $lockPath): 
             }
             cms_save_site_data($pdo, is_array($seed['data'] ?? null) ? $seed['data'] : $seed);
         } else {
-            cms_save_site_data($pdo, cms_default_site_data());
+            cms_save_site_data($pdo, cms_showcase_site_data());
         }
         if ($pdo->inTransaction()) {
             $pdo->commit();

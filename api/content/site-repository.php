@@ -199,6 +199,241 @@ function cms_default_site_data(): array
     ];
 }
 
+function cms_showcase_timestamp(int $offsetMinutes = 0): string
+{
+    return gmdate('Y-m-d H:i:s', strtotime('2026-06-07 13:00:00 UTC') + ($offsetMinutes * 60));
+}
+
+function cms_showcase_card(int $index, string $linkType = 'none', string $linkValue = ''): array
+{
+    $padded = str_pad((string) $index, 2, '0', STR_PAD_LEFT);
+    return [
+        'id' => 'demo-card-' . $padded,
+        'title' => 'تجربة بطاقة ' . $padded,
+        'subtitle' => 'تجربة ' . $padded . ' لعرض البطاقات والروابط والأزرار داخل صفحة البطاقات.',
+        'linkType' => $linkType,
+        'linkValue' => $linkValue,
+        'linkLabel' => 'عرض تجربة ' . $padded,
+        'visible' => true,
+    ];
+}
+
+function cms_showcase_site_data(): array
+{
+    $data = cms_default_site_data();
+    $timestamp = cms_showcase_timestamp();
+
+    $data['settings']['siteName'] = 'تجربة السيرة';
+    $data['settings']['brandName'] = 'تجربة';
+    $data['settings']['brandSlogan'] = 'تجربة لكل المزايا';
+    $data['settings']['phoneNumber'] = '+966500000000';
+    $data['settings']['email'] = 'admin@example.com';
+    $data['settings']['shellTopbarText'] = 'تجربة موقع سيرة ذاتية يعرض السلايدر والبطاقات والمشاريع والصفحات ولوحة الإدارة.';
+    $data['settings']['shellTopbarShortText'] = 'تجربة موقع قابل للإدارة.';
+    $data['navigation']['projectsLabel'] = 'مشاريع تجربة';
+    $data['navigation']['pagesLabel'] = 'صفحات تجربة';
+    $data['texts']['projectsDescription'] = 'تجربة لعرض المشاريع مع التصنيفات والحالة والصورة وصفحة التفاصيل.';
+    $data['texts']['pagesDescription'] = 'تجربة لعرض الصفحات الجديدة والصفحات الفرعية داخل الهيدر وقائمة الصفحات.';
+    $data['texts']['notificationsDescription'] = 'تجربة لعرض إشعارات تحديث المحتوى من لوحة الإدارة.';
+
+    $data['home'] = [
+        'ownerName' => 'تجربة 01',
+        'title' => 'تجربة 02 - عرض المزايا',
+        'professionalTitle' => 'تجربة 02 - عرض المزايا',
+        'intro' => 'تجربة 03 تعرض السلايدر والأرقام والأيقونات والمشاريع والصفحات الجديدة.',
+        'avatar' => 'assets/images/personal.jpg',
+        'biography' => 'تجربة 04: هذا النص يوضح مكان السيرة الذاتية ويمكن تغييره بالكامل من لوحة الإدارة بعد تسجيل الدخول.',
+        'heroImage' => '',
+        'heroVideo' => '',
+        'heroSlides' => [
+            [
+                'title' => 'تجربة السلايدر 01',
+                'subtitle' => 'تجربة',
+                'intro' => 'تجربة 01 مع صورة ونسخة قابلة للتعديل من لوحة الإدارة.',
+                'image' => 'assets/images/hero1.jpg',
+                'mobileImage' => 'assets/images/hero1.jpg',
+                'video' => '',
+                'mobileVideo' => '',
+                'alt' => 'تجربة السلايدر 01',
+                'visible' => true,
+            ],
+            [
+                'title' => 'تجربة السلايدر 02',
+                'subtitle' => 'أرقام وأيقونات',
+                'intro' => 'تجربة 02 تعرض كيف يتحرك السلايدر مع محتوى عربي واضح.',
+                'image' => 'assets/images/riyadhcenter_ai.webp',
+                'mobileImage' => 'assets/images/riyadhcenter_ai.webp',
+                'video' => '',
+                'mobileVideo' => '',
+                'alt' => 'تجربة السلايدر 02',
+                'visible' => true,
+            ],
+            [
+                'title' => 'تجربة السلايدر 03',
+                'subtitle' => 'فيديو',
+                'intro' => 'تجربة 03 تستخدم فيديو محلي لإظهار دعم الوسائط المتعددة.',
+                'image' => 'assets/images/2030.jpg',
+                'mobileImage' => 'assets/images/2030.jpg',
+                'video' => 'assets/video/hero.webm',
+                'mobileVideo' => 'assets/video/hero.webm',
+                'alt' => 'تجربة السلايدر 03',
+                'visible' => true,
+            ],
+        ],
+        'numbers' => [
+            'title' => 'تجربة بالأرقام',
+            'subtitle' => 'أرقام وأيقونات داخل السوايبر',
+            'cards' => [
+                ['id' => 'demo-number-01', 'title' => 'تجربة 01', 'number' => '01', 'icon' => 'hgi-chart-up', 'visible' => true],
+                ['id' => 'demo-number-02', 'title' => 'تجربة 02', 'number' => '02', 'icon' => 'hgi-star', 'visible' => true],
+                ['id' => 'demo-number-03', 'title' => 'تجربة 03', 'number' => '03', 'icon' => 'hgi-award-05', 'visible' => true],
+                ['id' => 'demo-number-04', 'title' => 'تجربة 04', 'number' => '04', 'icon' => 'hgi-briefcase-01', 'visible' => true],
+                ['id' => 'demo-number-05', 'title' => 'تجربة 05', 'number' => '05', 'icon' => 'hgi-user-group', 'visible' => true],
+                ['id' => 'demo-number-06', 'title' => 'تجربة 06', 'number' => '06', 'icon' => 'hgi-target-01', 'visible' => true],
+                ['id' => 'demo-number-07', 'title' => 'تجربة 07', 'number' => '07', 'icon' => 'hgi-globe', 'visible' => true],
+                ['id' => 'demo-number-08', 'title' => 'تجربة 08', 'number' => '08', 'icon' => 'hgi-zap', 'visible' => true],
+            ],
+        ],
+        'experience' => [
+            ['id' => 'demo-experience-01', 'title' => 'تجربة خبرة 01', 'meta' => '2026', 'description' => 'تجربة لعرض بطاقة خبرة في الصفحة الرئيسية.', 'visible' => true],
+            ['id' => 'demo-experience-02', 'title' => 'تجربة خبرة 02', 'meta' => '2025', 'description' => 'تجربة ثانية لعرض ترتيب الخبرات من لوحة الإدارة.', 'visible' => true],
+            ['id' => 'demo-experience-03', 'title' => 'تجربة خبرة 03', 'meta' => '2024', 'description' => 'تجربة ثالثة لعرض النصوص الطويلة داخل البطاقات.', 'visible' => true],
+        ],
+        'achievements' => [
+            ['id' => 'demo-achievement-01', 'title' => 'تجربة إنجاز 01', 'meta' => '01', 'description' => 'تجربة لإنجاز ظاهر في قسم الإنجازات.', 'visible' => true],
+            ['id' => 'demo-achievement-02', 'title' => 'تجربة إنجاز 02', 'meta' => '02', 'description' => 'تجربة لإنجاز آخر مع رقم مختصر.', 'visible' => true],
+        ],
+        'skills' => [
+            ['id' => 'demo-skill-01', 'name' => 'تجربة مهارة 01', 'visible' => true],
+            ['id' => 'demo-skill-02', 'name' => 'تجربة مهارة 02', 'visible' => true],
+            ['id' => 'demo-skill-03', 'name' => 'تجربة مهارة 03', 'visible' => true],
+            ['id' => 'demo-skill-04', 'name' => 'تجربة مهارة 04', 'visible' => true],
+        ],
+        'contacts' => [
+            ['id' => 'demo-contact-01', 'label' => 'البريد', 'value' => 'admin@example.com', 'url' => 'admin@example.com', 'iconType' => 'email', 'iconPath' => '', 'visible' => true],
+            ['id' => 'demo-contact-02', 'label' => 'الموقع', 'value' => 'example.com', 'url' => 'https://example.com', 'iconType' => 'website', 'iconPath' => '', 'visible' => true],
+            ['id' => 'demo-contact-03', 'label' => 'GitHub', 'value' => 'aldehm3e', 'url' => 'https://github.com/aldehm3e', 'iconType' => 'github', 'iconPath' => '', 'visible' => true],
+        ],
+        'footerLinks' => [
+            ['id' => 'demo-footer-link-01', 'label' => 'مشاريع تجربة', 'url' => 'projects.html', 'visible' => true],
+            ['id' => 'demo-footer-link-02', 'label' => 'صفحات تجربة', 'url' => 'pages.html', 'visible' => true],
+            ['id' => 'demo-footer-link-03', 'label' => 'بطاقات تجربة', 'url' => 'cards.html?slug=cards-demo', 'visible' => true],
+        ],
+    ];
+
+    $data['footer']['columns'] = [
+        [
+            'id' => 'footer-column-demo',
+            'title' => 'روابط تجربة',
+            'visible' => true,
+            'links' => [
+                ['id' => 'footer-demo-01', 'label' => 'مشاريع تجربة', 'url' => 'projects.html', 'visible' => true],
+                ['id' => 'footer-demo-02', 'label' => 'صفحات تجربة', 'url' => 'pages.html', 'visible' => true],
+                ['id' => 'footer-demo-03', 'label' => 'بطاقات تجربة', 'url' => 'cards.html?slug=cards-demo', 'visible' => true],
+            ],
+        ],
+    ];
+    $data['footer']['iconGroups'] = [
+        [
+            'id' => 'footer-icons-demo',
+            'title' => 'أيقونات تجربة',
+            'visible' => true,
+            'links' => [
+                ['id' => 'footer-icon-01', 'label' => 'GitHub', 'url' => 'https://github.com/aldehm3e', 'iconType' => 'github', 'iconPath' => '', 'visible' => true],
+                ['id' => 'footer-icon-02', 'label' => 'Email', 'url' => 'mailto:admin@example.com', 'iconType' => 'email', 'iconPath' => '', 'visible' => true],
+                ['id' => 'footer-icon-03', 'label' => 'Website', 'url' => 'https://example.com', 'iconType' => 'website', 'iconPath' => '', 'visible' => true],
+            ],
+        ],
+        [
+            'id' => 'footer-icons-app-demo',
+            'title' => 'تطبيق تجربة',
+            'visible' => true,
+            'links' => [
+                ['id' => 'footer-app-01', 'label' => 'App Store', 'url' => 'https://example.com/app', 'iconType' => 'appstore', 'iconPath' => '', 'visible' => true],
+                ['id' => 'footer-app-02', 'label' => 'Google Play', 'url' => 'https://example.com/play', 'iconType' => 'googleplay', 'iconPath' => '', 'visible' => true],
+            ],
+        ],
+    ];
+    $data['footer']['bottomLinks'] = [
+        ['id' => 'footer-bottom-01', 'label' => 'تجربة الخصوصية', 'url' => 'index.html#/page/privacy-demo', 'visible' => true],
+        ['id' => 'footer-bottom-02', 'label' => 'تجربة الشروط', 'url' => 'index.html#/page/terms-demo', 'visible' => true],
+    ];
+    $data['footer']['copyrightText'] = '© 2026 تجربة السيرة';
+    $data['footer']['legalText'] = 'تجربة قانونية مختصرة يمكن تعديلها من لوحة الإدارة.';
+    $data['footer']['cookies']['linkPageSlugs'] = ['privacy-demo', 'terms-demo'];
+
+    $data['projects'] = [
+        ['id' => 'demo-project-01', 'title' => 'تجربة مشروع 01', 'slug' => 'demo-project-01', 'description' => 'تجربة 01 لعرض بطاقة مشروع مع صورة وحالة وتصنيف.', 'status' => 'تجربة نشط', 'date' => '2026', 'category' => 'تجربة', 'image' => 'assets/images/riyadhcenter.webp', 'url' => 'https://example.com/demo-project-01', 'visible' => true],
+        ['id' => 'demo-project-02', 'title' => 'تجربة مشروع 02', 'slug' => 'demo-project-02', 'description' => 'تجربة 02 لعرض صفحة تفاصيل المشروع ورابط خارجي.', 'status' => 'تجربة مكتمل', 'date' => '2025', 'category' => 'بطاقات', 'image' => 'assets/images/AIchatbot.jpg', 'url' => 'https://example.com/demo-project-02', 'visible' => true],
+        ['id' => 'demo-project-03', 'title' => 'تجربة مشروع 03', 'slug' => 'demo-project-03', 'description' => 'تجربة 03 لعرض تنوع التصنيفات داخل فلتر المشاريع.', 'status' => 'تجربة', 'date' => '2024', 'category' => 'صفحات', 'image' => 'assets/images/2030.jpg', 'url' => 'https://example.com/demo-project-03', 'visible' => true],
+        ['id' => 'demo-project-04', 'title' => 'تجربة مشروع 04', 'slug' => 'demo-project-04', 'description' => 'تجربة 04 لعرض مشروع بدون تعقيد وبنص واضح.', 'status' => 'تجربة قريب', 'date' => '2026', 'category' => 'إدارة', 'image' => 'assets/images/bio.png', 'url' => 'https://example.com/demo-project-04', 'visible' => true],
+    ];
+
+    $data['pages'] = [
+        ['id' => 'demo-page-group', 'title' => 'قائمة تجربة', 'slug' => 'demo-pages', 'parentSlug' => '', 'contentMode' => 'text', 'content' => '', 'image' => '', 'video' => '', 'visible' => true, 'showInNavigation' => true, 'showInFooter' => false, 'createdAt' => $timestamp, 'updatedAt' => $timestamp],
+        ['id' => 'demo-page-01', 'title' => 'تجربة صفحة 01', 'slug' => 'page-demo-01', 'parentSlug' => 'demo-pages', 'contentMode' => 'text', 'content' => "تجربة 01\n\nهذه صفحة جديدة تعرض محتوى نصي وصورة ورابطا من الهيدر.", 'image' => 'assets/images/hero1.jpg', 'video' => '', 'visible' => true, 'showInNavigation' => false, 'showInFooter' => true, 'createdAt' => $timestamp, 'updatedAt' => cms_showcase_timestamp(10)],
+        ['id' => 'demo-page-02', 'title' => 'تجربة صفحة 02', 'slug' => 'page-demo-02', 'parentSlug' => 'demo-pages', 'contentMode' => 'html', 'content' => '<h2>تجربة 02</h2><p>تجربة صفحة HTML منسقة يمكن تعديلها من لوحة الإدارة.</p><ul><li>تجربة رقم 1</li><li>تجربة رقم 2</li><li>تجربة رقم 3</li></ul>', 'image' => 'assets/images/riyadhcenter_ai.webp', 'video' => '', 'visible' => true, 'showInNavigation' => false, 'showInFooter' => false, 'createdAt' => $timestamp, 'updatedAt' => cms_showcase_timestamp(20)],
+        ['id' => 'demo-page-03', 'title' => 'تجربة صفحة 03', 'slug' => 'page-demo-03', 'parentSlug' => '', 'contentMode' => 'text', 'content' => "تجربة 03\n\nصفحة مستقلة تظهر في قائمة الصفحات والهيدر.", 'image' => 'assets/images/2030.jpg', 'video' => '', 'visible' => true, 'showInNavigation' => true, 'showInFooter' => false, 'createdAt' => $timestamp, 'updatedAt' => cms_showcase_timestamp(30)],
+        ['id' => 'demo-page-privacy', 'title' => 'تجربة الخصوصية', 'slug' => 'privacy-demo', 'parentSlug' => '', 'contentMode' => 'text', 'content' => 'تجربة الخصوصية: نص قابل للتغيير من لوحة الإدارة.', 'image' => '', 'video' => '', 'visible' => true, 'showInNavigation' => false, 'showInFooter' => true, 'createdAt' => $timestamp, 'updatedAt' => cms_showcase_timestamp(40)],
+        ['id' => 'demo-page-terms', 'title' => 'تجربة الشروط', 'slug' => 'terms-demo', 'parentSlug' => '', 'contentMode' => 'text', 'content' => 'تجربة الشروط: نص قابل للتغيير من لوحة الإدارة.', 'image' => '', 'video' => '', 'visible' => true, 'showInNavigation' => false, 'showInFooter' => true, 'createdAt' => $timestamp, 'updatedAt' => cms_showcase_timestamp(50)],
+    ];
+
+    $cards = [];
+    for ($index = 1; $index <= 18; $index++) {
+        if ($index === 1) {
+            $cards[] = cms_showcase_card($index, 'page', 'page-demo-01');
+        } elseif ($index === 2) {
+            $cards[] = cms_showcase_card($index, 'page', 'page-demo-02');
+        } elseif ($index === 3) {
+            $cards[] = cms_showcase_card($index, 'external', 'projects.html');
+        } else {
+            $cards[] = cms_showcase_card($index);
+        }
+    }
+
+    $data['cardCollections'] = [
+        [
+            'id' => 'demo-card-collection-main',
+            'title' => 'بطاقات تجربة',
+            'slug' => 'cards-demo',
+            'description' => 'تجربة صفحة بطاقات تحتوي على أكثر من صفحة وتدعم الأزرار والروابط.',
+            'visible' => true,
+            'showInNavigation' => true,
+            'showInFooter' => true,
+            'createdAt' => $timestamp,
+            'updatedAt' => cms_showcase_timestamp(60),
+            'cards' => $cards,
+        ],
+        [
+            'id' => 'demo-card-collection-admin',
+            'title' => 'بطاقات الإدارة',
+            'slug' => 'admin-cards-demo',
+            'description' => 'تجربة لبطاقات توضح أقسام لوحة الإدارة مع روابط داخلية.',
+            'visible' => true,
+            'showInNavigation' => true,
+            'showInFooter' => false,
+            'createdAt' => $timestamp,
+            'updatedAt' => cms_showcase_timestamp(70),
+            'cards' => [
+                ['id' => 'admin-card-01', 'title' => 'تجربة إدارة 01', 'subtitle' => 'تجربة لإدارة الرئيسية والسلايدر.', 'linkType' => 'external', 'linkValue' => 'admin.html', 'linkLabel' => 'فتح الإدارة', 'visible' => true],
+                ['id' => 'admin-card-02', 'title' => 'تجربة إدارة 02', 'subtitle' => 'تجربة لإدارة المشاريع والبطاقات.', 'linkType' => 'external', 'linkValue' => 'projects.html', 'linkLabel' => 'عرض المشاريع', 'visible' => true],
+                ['id' => 'admin-card-03', 'title' => 'تجربة إدارة 03', 'subtitle' => 'تجربة لإدارة الصفحات والروابط.', 'linkType' => 'page', 'linkValue' => 'page-demo-03', 'linkLabel' => 'فتح الصفحة', 'visible' => true],
+            ],
+        ],
+    ];
+
+    $data['integrations'] = [
+        ['id' => 'demo-integration-01', 'type' => 'analytics', 'name' => 'تجربة تحليلات', 'provider' => 'Demo', 'environment' => 'test', 'endpointUrl' => '', 'webhookUrl' => '', 'publicKey' => 'demo-public-key', 'secretEnvKey' => 'DEMO_SECRET', 'configJson' => '{"mode":"demo"}', 'enabled' => false],
+    ];
+    $data['notifications'] = [
+        ['id' => 'demo-notification-01', 'key' => 'demo:home', 'status' => 'success', 'tag' => 'الرئيسية', 'title' => 'تجربة تحديث الرئيسية', 'description' => 'تم تجهيز السلايدر والأرقام والأيقونات.', 'href' => 'index.html', 'createdAt' => cms_showcase_timestamp(80)],
+        ['id' => 'demo-notification-02', 'key' => 'demo:projects', 'status' => 'info', 'tag' => 'المشاريع', 'title' => 'تجربة تحديث المشاريع', 'description' => 'تمت إضافة مشاريع تجربة مع صفحات تفاصيل.', 'href' => 'projects.html', 'createdAt' => cms_showcase_timestamp(90)],
+        ['id' => 'demo-notification-03', 'key' => 'demo:cards', 'status' => 'warning', 'tag' => 'البطاقات', 'title' => 'تجربة تحديث البطاقات', 'description' => 'تمت إضافة بطاقات كافية لإظهار التقسيم والتنقل.', 'href' => 'cards.html?slug=cards-demo', 'createdAt' => cms_showcase_timestamp(100)],
+    ];
+
+    return $data;
+}
+
 function cms_fetch_site_data(PDO $pdo): array
 {
     $data = cms_default_site_data();
